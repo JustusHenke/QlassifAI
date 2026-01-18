@@ -58,25 +58,29 @@ class KeywordCategorizer:
             logger.warning("Keine Keywords zum Kategorisieren")
             return {}
         
-        # Baue Prompt
-        keywords_str = ", ".join(keywords[:100])  # Limitiere auf 100 Keywords
-        if len(keywords) > 100:
-            keywords_str += f" ... (und {len(keywords) - 100} weitere)"
+        # Baue Prompt mit allen Keywords
+        keywords_str = "\n".join([f"- {kw}" for kw in keywords[:150]])  # Limitiere auf 150 Keywords
+        if len(keywords) > 150:
+            keywords_str += f"\n... (und {len(keywords) - 150} weitere)"
         
-        prompt = f"""Gegeben ist folgende Liste von Keywords:
+        prompt = f"""Gegeben ist folgende Liste von Keywords aus Textantworten:
 {keywords_str}
 
-Entwickle 5-10 Überkategorien, die diese Keywords thematisch gruppieren.
-Jedes Keyword sollte genau einer Kategorie zugeordnet werden.
+Entwickle 5-10 thematische Überkategorien, die diese Keywords sinnvoll gruppieren.
+WICHTIG: Jedes Keyword aus der Liste muss GENAU EINER Kategorie zugeordnet werden.
+Achte besonders auf Multi-Word-Keywords (z.B. "finanzielle Unterstützung", "soziales Engagement").
 
 Antwortformat (strikt einhalten):
 {{
-  "Kategorie_1": ["keyword1", "keyword2", ...],
+  "Kategorie_1": ["keyword1", "keyword2", "multi word keyword", ...],
   "Kategorie_2": ["keyword3", "keyword4", ...],
   ...
 }}
 
-WICHTIG: Antworte NUR mit dem JSON-Objekt, ohne zusätzlichen Text."""
+WICHTIG: 
+- Antworte NUR mit dem JSON-Objekt, ohne zusätzlichen Text
+- Verwende die EXAKTEN Keywords aus der Liste (inklusive Groß-/Kleinschreibung)
+- Jedes Keyword muss zugeordnet werden"""
         
         try:
             logger.info("Generiere Kategorien mit LLM...")
@@ -88,13 +92,18 @@ WICHTIG: Antworte NUR mit dem JSON-Objekt, ohne zusätzlichen Text."""
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,
-                max_tokens=2000
+                max_tokens=3000
             )
             
             response_text = response.choices[0].message.content.strip()
             categories = json.loads(response_text)
             
             logger.info(f"{len(categories)} Kategorien generiert")
+            
+            # Zähle zugeordnete Keywords
+            total_assigned = sum(len(kws) for kws in categories.values())
+            logger.info(f"{total_assigned} von {len(keywords)} Keywords zugeordnet")
+            
             return categories
             
         except Exception as e:
@@ -122,11 +131,42 @@ WICHTIG: Antworte NUR mit dem JSON-Objekt, ohne zusätzlichen Text."""
         # Suche für jedes Keyword die passende Kategorie
         for keyword in result.keywords:
             keyword_lower = keyword.lower().strip()
+            category_found = False
             
+            # Exakte Suche
             for category, category_keywords in category_mapping.items():
                 if keyword_lower in [k.lower() for k in category_keywords]:
                     assigned_categories.add(category)
+                    category_found = True
                     break
+            
+            # Falls nicht gefunden: Teil-Match (für Multi-Word-Keywords)
+            if not category_found:
+                for category, category_keywords in category_mapping.items():
+                    for cat_keyword in category_keywords:
+                        cat_keyword_lower = cat_keyword.lower()
+                        # Prüfe ob eines im anderen enthalten ist
+                        if (cat_keyword_lower in keyword_lower or 
+                            keyword_lower in cat_keyword_lower):
+                            assigned_categories.add(category)
+                            category_found = True
+                            break
+                    if category_found:
+                        break
+            
+            # Falls immer noch nicht gefunden: Wort-für-Wort-Vergleich
+            if not category_found:
+                keyword_words = set(keyword_lower.split())
+                for category, category_keywords in category_mapping.items():
+                    for cat_keyword in category_keywords:
+                        cat_words = set(cat_keyword.lower().split())
+                        # Wenn mindestens ein Wort übereinstimmt
+                        if keyword_words & cat_words:
+                            assigned_categories.add(category)
+                            category_found = True
+                            break
+                    if category_found:
+                        break
         
         if not assigned_categories:
             return ["Keine"]
