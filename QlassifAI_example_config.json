@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "text_column_name": "Textantwort",
+  "check_attributes": [
+    {
+      "question": "Wird über Wettbewerb gesprochen?",
+      "answer_type": "boolean",
+      "definition": "Wettbewerb bedeutet Vergleich mit anderen Anbietern, Konkurrenten oder Alternativen. Erwähnungen von Marktposition oder Vergleichen zählen dazu."
+    },
+    {
+      "question": "Welche Produktkategorie wird erwähnt?",
+      "answer_type": "categorical",
+      "categories": [
+        "Hardware",
+        "Software",
+        "Service",
+        "Keine"
+      ],
+      "definition": "Hardware = physische Geräte; Software = Programme/Apps; Service = Dienstleistungen/Support; Keine = wenn nichts davon zutrifft"
+    },
+    {
+      "question": "Ist die Aussage zukunftsorientiert?",
+      "answer_type": "boolean",
+      "definition": "Zukunftsorientiert bedeutet Bezug auf zukünftige Entwicklungen, Pläne, Erwartungen oder Prognosen. Vergangenheit oder Gegenwart zählen nicht."
+    }
+  ]
+}
