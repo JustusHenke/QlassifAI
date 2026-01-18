@@ -122,7 +122,10 @@ WICHTIG:
             
         Returns:
             Liste von zugeordneten Kategorien
+            - "Keine": Wenn Fehler oder keine Keywords vorhanden
+            - "Sonstiges": Wenn Keywords vorhanden, aber keine Kategorie gefunden
         """
+        # Fall 1: Fehler oder keine Keywords -> "Keine"
         if result.error or not result.keywords:
             return ["Keine"]
         
@@ -168,8 +171,10 @@ WICHTIG:
                     if category_found:
                         break
         
+        # Fall 2: Keywords vorhanden, aber keine Kategorie gefunden -> "Sonstiges"
         if not assigned_categories:
-            return ["Keine"]
+            logger.warning(f"Keine Kategorie gefunden für Keywords: {result.keywords}")
+            return ["Sonstiges"]
         
         return sorted(list(assigned_categories))
     
