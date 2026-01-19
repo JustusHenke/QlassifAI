@@ -151,7 +151,7 @@ class ResultMerger:
             results: Liste von AnalysisResult
             
         Returns:
-            Liste der häufigsten Keywords (max 10)
+            Liste der häufigsten Keywords (max 4)
         """
         # Sammle alle Keywords
         all_keywords = []
@@ -161,11 +161,17 @@ class ResultMerger:
         # Zähle Häufigkeiten
         keyword_counts = Counter(all_keywords)
         
-        # Nimm die 10 häufigsten Keywords
-        most_common = keyword_counts.most_common(10)
+        # Nimm die 4 häufigsten Keywords
+        most_common = keyword_counts.most_common(4)
         
         # Extrahiere nur die Keywords (ohne Counts)
         merged_keywords = [keyword for keyword, count in most_common]
+        
+        # Stelle sicher, dass mindestens 2 Keywords vorhanden sind
+        if len(merged_keywords) < 2:
+            # Fülle mit "unbekannt" auf
+            while len(merged_keywords) < 2:
+                merged_keywords.append("unbekannt")
         
         logger.debug(
             f"Keywords zusammengeführt: {len(all_keywords)} gesamt -> "
@@ -178,7 +184,7 @@ class ResultMerger:
         self,
         results: List[AnalysisResult],
         check_attributes: List[CheckAttribute]
-    ) -> Dict[str, Union[str, bool]]:
+    ) -> Dict[str, Union[str, bool, List[str]]]:
         """
         Wendet feldspezifische Zusammenführungsregeln an.
         
@@ -210,6 +216,23 @@ class ResultMerger:
                 merged_checks[question] = any(
                     v is True for v in values if v is not None
                 )
+            
+            elif attr.answer_type == "multi_categorical":
+                # Multi-Categorical: Sammle alle Kategorien aus allen Chunks
+                all_categories = []
+                for v in values:
+                    if v is not None:
+                        if isinstance(v, list):
+                            all_categories.extend(v)
+                        elif v != "":
+                            all_categories.append(v)
+                
+                if all_categories:
+                    # Dedupliziere und behalte Reihenfolge
+                    unique_categories = list(dict.fromkeys(all_categories))
+                    merged_checks[question] = unique_categories
+                else:
+                    merged_checks[question] = None
             
             elif attr.answer_type == "categorical":
                 # Categorical: Sammle alle Nicht-Null-Werte
