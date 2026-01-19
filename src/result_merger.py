@@ -50,6 +50,7 @@ class ResultMerger:
                 sentiment_reason="",
                 keywords=[],
                 custom_checks={},
+                custom_checks_reasons={},
                 keyword_category="",
                 chunk_count=0,
                 error="Keine Chunk-Ergebnisse verfügbar"
@@ -62,6 +63,7 @@ class ResultMerger:
             sentiment_reason = self._merge_sentiment_reasons(chunk_results)
             keywords = self._merge_keywords(chunk_results)
             custom_checks = self._merge_custom_checks(chunk_results, check_attributes)
+            custom_checks_reasons = self._merge_custom_checks_reasons(chunk_results, check_attributes)
             
             logger.info(
                 f"Ergebnisse für {filename} zusammengeführt: "
@@ -75,6 +77,7 @@ class ResultMerger:
                 sentiment_reason=sentiment_reason,
                 keywords=keywords,
                 custom_checks=custom_checks,
+                custom_checks_reasons=custom_checks_reasons,
                 keyword_category="",  # Wird später von KeywordCategorizer gesetzt
                 chunk_count=len(chunk_results)
             )
@@ -89,6 +92,7 @@ class ResultMerger:
                 sentiment_reason="",
                 keywords=[],
                 custom_checks={},
+                custom_checks_reasons={},
                 keyword_category="",
                 chunk_count=len(chunk_results),
                 error=error_msg
@@ -245,3 +249,38 @@ class ResultMerger:
                     merged_checks[question] = None
         
         return merged_checks
+    
+    def _merge_custom_checks_reasons(
+        self,
+        results: List[AnalysisResult],
+        check_attributes: List[CheckAttribute]
+    ) -> Dict[str, str]:
+        """
+        Führt Begründungen für custom_checks zusammen.
+        
+        Args:
+            results: Liste von AnalysisResult
+            check_attributes: Konfiguration für benutzerdefinierte Prüfungen
+            
+        Returns:
+            Dictionary mit zusammengeführten Begründungen
+        """
+        merged_reasons = {}
+        
+        for attr in check_attributes:
+            question = attr.question
+            
+            # Sammle alle Begründungen für diese Prüfung
+            reasons = [
+                r.custom_checks_reasons.get(question, "")
+                for r in results
+                if question in r.custom_checks_reasons and r.custom_checks_reasons.get(question)
+            ]
+            
+            if reasons:
+                # Verknüpfe Begründungen mit Pipe-Zeichen
+                merged_reasons[question] = " | ".join(reasons)
+            else:
+                merged_reasons[question] = ""
+        
+        return merged_reasons

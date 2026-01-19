@@ -69,6 +69,7 @@ class ExcelWriter:
             result_columns = ["Paraphrase", "Sentiment", "Sentiment_Begründung", "Keywords"]
             for attr in check_attributes:
                 result_columns.append(attr.question)
+                result_columns.append(f"{attr.question} (Begründung)")
             result_columns.append("Keyword_Kategorie")
             
             start_col = col_count + 1
@@ -110,7 +111,9 @@ class ExcelWriter:
                 for attr in check_attributes:
                     question = attr.question
                     value = result.custom_checks.get(question)
+                    reason = result.custom_checks_reasons.get(question, "")
                     
+                    # Wert
                     if value is None:
                         new_sheet.cell(row=new_row_idx, column=start_col + col_offset, value="nicht kodiert")
                     else:
@@ -137,6 +140,10 @@ class ExcelWriter:
                             display_value = str(value).replace("|", ", ")
                             new_sheet.cell(row=new_row_idx, column=start_col + col_offset, value=display_value)
                     
+                    col_offset += 1
+                    
+                    # Begründung
+                    new_sheet.cell(row=new_row_idx, column=start_col + col_offset, value=reason if reason else "")
                     col_offset += 1
                 
                 # Keyword_Kategorie
@@ -297,6 +304,7 @@ class ExcelWriter:
         headers = ["Dateiname", "Paraphrase", "Sentiment", "Sentiment_Begründung", "Keywords"]
         for attr in check_attributes:
             headers.append(attr.question)
+            headers.append(f"{attr.question} (Begründung)")
         headers.extend(["Keyword_Kategorie", "Chunk_Anzahl"])
         
         for col_idx, header in enumerate(headers, start=1):
@@ -336,7 +344,9 @@ class ExcelWriter:
             for attr in check_attributes:
                 question = attr.question
                 value = result.custom_checks.get(question)
+                reason = result.custom_checks_reasons.get(question, "")
                 
+                # Wert
                 if value is None:
                     sheet.cell(row=row_idx, column=col_idx, value="nicht kodiert")
                 else:
@@ -363,6 +373,10 @@ class ExcelWriter:
                         display_value = str(value).replace("|", ", ")
                         sheet.cell(row=row_idx, column=col_idx, value=display_value)
                 
+                col_idx += 1
+                
+                # Begründung
+                sheet.cell(row=row_idx, column=col_idx, value=reason if reason else "")
                 col_idx += 1
             
             # Keyword_Kategorie

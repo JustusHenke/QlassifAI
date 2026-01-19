@@ -101,7 +101,8 @@ def main():
                     sentiment={-1: "negativ", 0: "gemischt", 1: "positiv"}[result.sentiment],
                     sentiment_reason=result.sentiment_reason,
                     keywords=result.keywords,
-                    custom_checks=result.custom_checks
+                    custom_checks=result.custom_checks,
+                    custom_checks_reasons={}  # Wird bei PDF-Merge nicht verwendet
                 ))
             
             category_mapping, category_assignments = keyword_categorizer.categorize_all(temp_results)

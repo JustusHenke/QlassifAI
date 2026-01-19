@@ -98,7 +98,8 @@ class AnalysisResult:
     sentiment: str
     sentiment_reason: str
     keywords: List[str]
-    custom_checks: Dict[str, Union[bool, str, None]]
+    custom_checks: Dict[str, Union[bool, str, List[str], None]]
+    custom_checks_reasons: Dict[str, str] = None  # Begründungen für custom_checks
     error: Optional[str] = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
@@ -106,6 +107,10 @@ class AnalysisResult:
     
     def __post_init__(self):
         """Validiert die Daten nach Initialisierung"""
+        # Initialisiere custom_checks_reasons falls None
+        if self.custom_checks_reasons is None:
+            self.custom_checks_reasons = {}
+        
         # Validiere sentiment
         valid_sentiments = ["positiv", "negativ", "gemischt"]
         if self.sentiment not in valid_sentiments:
@@ -348,7 +353,8 @@ class MergedResult:
     sentiment: int  # -1, 0, oder 1
     sentiment_reason: str
     keywords: List[str]
-    custom_checks: Dict[str, Union[str, bool]]
+    custom_checks: Dict[str, Union[str, bool, List[str]]]
+    custom_checks_reasons: Dict[str, str]  # Begründungen für custom_checks
     keyword_category: str
     chunk_count: int
     error: Optional[str] = None

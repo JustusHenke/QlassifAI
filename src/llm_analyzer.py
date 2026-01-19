@@ -78,6 +78,9 @@ Bitte liefere:
                 if attr.definition:
                     prompt += f"\n     Definition/Regeln: {attr.definition}"
                 prompt += "\n"
+            
+            prompt += "\n6. Begründungen für Prüfmerkmale:\n"
+            prompt += "   Für jedes Prüfmerkmal: KURZE Begründung (maximal 20 Wörter) warum diese Antwort gewählt wurde.\n"
         
         prompt += """
 Antwortformat (strikt einhalten):
@@ -105,6 +108,18 @@ Antwortformat (strikt einhalten):
                 else:
                     prompt += "\n"
         
+        prompt += """  },
+  "custom_checks_reasons": {
+"""
+        
+        if check_attributes:
+            for idx, attr in enumerate(check_attributes):
+                prompt += f'    "{attr.question}": "kurze Begründung (max 20 Wörter)"'
+                if idx < len(check_attributes) - 1:
+                    prompt += ",\n"
+                else:
+                    prompt += "\n"
+        
         prompt += """  }
 }
 
@@ -112,6 +127,7 @@ WICHTIG:
 - Antworte NUR mit dem JSON-Objekt, ohne zusätzlichen Text
 - Halte die Paraphrase KOMPAKT (maximal 1-2 Sätze)
 - Halte die Sentiment_Begründung KURZ (maximal 30 Wörter)
+- Halte die Prüfmerkmal-Begründungen SEHR KURZ (maximal 20 Wörter)
 - Setze Prüfmerkmale auf null, wenn der Text KEINEN Bezug zum Thema hat"""
         
         return prompt
@@ -139,6 +155,7 @@ WICHTIG:
             sentiment_reason = data.get("sentiment_reason", "")
             keywords = data.get("keywords", [])
             custom_checks = data.get("custom_checks", {})
+            custom_checks_reasons = data.get("custom_checks_reasons", {})
             
             # Validiere und korrigiere Sentiment
             valid_sentiments = ["positiv", "negativ", "gemischt"]
@@ -161,7 +178,8 @@ WICHTIG:
                 sentiment=sentiment,
                 sentiment_reason=sentiment_reason,
                 keywords=keywords,
-                custom_checks=custom_checks
+                custom_checks=custom_checks,
+                custom_checks_reasons=custom_checks_reasons
             )
             
             return result
@@ -196,6 +214,7 @@ WICHTIG:
                 sentiment_reason="",
                 keywords=["leer", "keine"],
                 custom_checks={},
+                custom_checks_reasons={},
                 error="Leerer Text"
             )
         
@@ -252,6 +271,7 @@ WICHTIG:
                         sentiment_reason="",
                         keywords=["fehler", "timeout"],
                         custom_checks={},
+                        custom_checks_reasons={},
                         error=error_msg
                     )
             
@@ -270,6 +290,7 @@ WICHTIG:
                         sentiment_reason="",
                         keywords=["fehler", "rate-limit"],
                         custom_checks={},
+                        custom_checks_reasons={},
                         error=error_msg
                     )
             
@@ -281,6 +302,7 @@ WICHTIG:
                     sentiment_reason="",
                     keywords=["fehler", "api"],
                     custom_checks={},
+                    custom_checks_reasons={},
                     error=str(e)
                 )
             
@@ -296,6 +318,7 @@ WICHTIG:
                         sentiment_reason="",
                         keywords=["fehler", "parse"],
                         custom_checks={},
+                        custom_checks_reasons={},
                         error=str(e)
                     )
             
@@ -307,6 +330,7 @@ WICHTIG:
                     sentiment_reason="",
                     keywords=["fehler", "unbekannt"],
                     custom_checks={},
+                    custom_checks_reasons={},
                     error=str(e)
                 )
         
@@ -317,5 +341,6 @@ WICHTIG:
             sentiment_reason="",
             keywords=["fehler", "unbekannt"],
             custom_checks={},
+            custom_checks_reasons={},
             error="Maximale Versuche erreicht"
         )
