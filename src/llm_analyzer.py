@@ -64,7 +64,7 @@ Bitte liefere:
         
         # Füge benutzerdefinierte Prüfmerkmale hinzu
         if check_attributes:
-            prompt += "\n5. Prüfmerkmale:\n"
+            prompt += "\n5. Untersuche ob folgende Prüfmerkmale auf den Text zutreffen:\n"
             for idx, attr in enumerate(check_attributes, start=1):
                 prompt += f"   - {attr.question}"
                 if attr.answer_type == "boolean":
@@ -132,6 +132,30 @@ WICHTIG:
         
         return prompt
     
+    def _clean_json_response(self, response_text: str) -> str:
+        """
+        Bereinigt LLM-Antwort von Markdown-Code-Blöcken und anderen Formatierungen.
+        
+        Args:
+            response_text: Rohe Antwort vom LLM
+            
+        Returns:
+            Bereinigte JSON-String
+        """
+        # Entferne Markdown-Code-Blöcke (```json ... ``` oder ``` ... ```)
+        if response_text.startswith("```"):
+            # Finde Start und Ende der Code-Blöcke
+            lines = response_text.split("\n")
+            # Entferne erste Zeile (```json oder ```)
+            if lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            # Entferne letzte Zeile (```)
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            response_text = "\n".join(lines)
+        
+        return response_text.strip()
+    
     def _parse_llm_response(self, response_text: str, check_attributes: List[CheckAttribute]) -> AnalysisResult:
         """
         Parst strukturierte LLM-Antwort.
@@ -147,6 +171,19 @@ WICHTIG:
             ValueError: Bei ungültigem JSON oder fehlenden Feldern
         """
         try:
+            # Bereinige die Antwort von Markdown-Code-Blöcken
+            response_text = self._clean_json_response(response_text)
+            
+            # Logge die rohe Antwort für Debugging (nur erste 200 Zeichen)
+            logger.debug(f"LLM-Antwort (erste 200 Zeichen): {response_text[:200]}")
+            
+            # Prüfe ob Antwort leer ist
+            if not response_text or not response_text.strip():
+                error_msg = "LLM hat leere Antwort zurückgegeben"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            
+            # Versuche JSON zu parsen
             data = json.loads(response_text)
             
             # Extrahiere Felder
@@ -187,10 +224,12 @@ WICHTIG:
         except json.JSONDecodeError as e:
             error_msg = f"Ungültiges JSON vom LLM: {e}"
             logger.error(error_msg)
+            logger.error(f"Rohe Antwort: {response_text[:500]}")  # Logge mehr für Debugging
             raise ValueError(error_msg)
         except Exception as e:
             error_msg = f"Fehler beim Parsen der LLM-Antwort: {e}"
             logger.error(error_msg)
+            logger.error(f"Rohe Antwort: {response_text[:500]}")
             raise ValueError(error_msg)
     
     def analyze_text(self, text: str, check_attributes: List[CheckAttribute], 
@@ -237,7 +276,28 @@ WICHTIG:
                 )
                 
                 # Extrahiere Antwort
-                response_text = response.choices[0].message.content.strip()
+                response_text = response.choices[0].message.content
+                
+                # Prüfe ob Antwort None ist
+                if response_text is None:
+                    logger.warning(f"LLM hat None zurückgegeben (Versuch {attempt + 1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        logger.info("Versuche erneut...")
+                        continue
+                    else:
+                        error_msg = "LLM hat nach mehreren Versuchen None zurückgegeben"
+                        logger.error(error_msg)
+                        return AnalysisResult(
+                            paraphrase="",
+                            sentiment="gemischt",
+                            sentiment_reason="",
+                            keywords=["fehler", "keine-antwort"],
+                            custom_checks={},
+                            custom_checks_reasons={},
+                            error=error_msg
+                        )
+                
+                response_text = response_text.strip()
                 
                 # Extrahiere Token-Statistiken
                 usage = response.usage
