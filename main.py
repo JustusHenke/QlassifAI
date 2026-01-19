@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+from datetime import datetime
 
 # Füge src zum Python-Pfad hinzu
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -116,8 +117,10 @@ def main():
             print("Erstelle Output-Datei...")
             print("=" * 60)
             
+            # Erstelle Zeitstempel
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             dir_name = working_directory.name
-            output_file = working_directory / f"{dir_name}_analyzed.xlsx"
+            output_file = working_directory / f"{dir_name}_analyzed_{timestamp}.xlsx"
             
             excel_writer = ExcelWriter()
             excel_writer.create_pdf_results_workbook(
@@ -226,7 +229,9 @@ def main():
             print("\n9. Erstelle neue Excel-Datei mit Ergebnissen...")
             excel_writer = ExcelWriter()
         
-            output_file = excel_file.parent / f"{excel_file.stem}_analyzed{excel_file.suffix}"
+            # Erstelle Zeitstempel
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file = excel_file.parent / f"{excel_file.stem}_analyzed_{timestamp}{excel_file.suffix}"
             excel_writer.create_new_workbook_with_results(
                 sheet_infos=sheet_infos,
                 all_results=all_results,
