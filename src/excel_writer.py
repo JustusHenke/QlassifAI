@@ -132,8 +132,10 @@ class ExcelWriter:
                             else:
                                 display_value = str(value)
                             new_sheet.cell(row=new_row_idx, column=start_col + col_offset, value=display_value)
-                        else:
-                            new_sheet.cell(row=new_row_idx, column=start_col + col_offset, value=str(value))
+                        else:  # categorical
+                            # Bereinige Pipe-Zeichen (falls LLM sie verwendet hat)
+                            display_value = str(value).replace("|", ", ")
+                            new_sheet.cell(row=new_row_idx, column=start_col + col_offset, value=display_value)
                     
                     col_offset += 1
                 
@@ -356,8 +358,10 @@ class ExcelWriter:
                         else:
                             display_value = str(value)
                         sheet.cell(row=row_idx, column=col_idx, value=display_value)
-                    else:
-                        sheet.cell(row=row_idx, column=col_idx, value=str(value))
+                    else:  # categorical
+                        # Bereinige Pipe-Zeichen (falls LLM sie verwendet hat)
+                        display_value = str(value).replace("|", ", ")
+                        sheet.cell(row=row_idx, column=col_idx, value=display_value)
                 
                 col_idx += 1
             
