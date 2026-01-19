@@ -214,6 +214,19 @@ class ConfigManager:
                     print("✗ Mindestens 2 Kategorien erforderlich.")
                     continue
                 
+                # Frage nach Mehrfachkodierung
+                print("\nMehrfachkodierung zulässig?")
+                print("  j = Ja (mehrere Kategorien können gleichzeitig zutreffen)")
+                print("  n = Nein (nur eine Kategorie kann zutreffen)")
+                while True:
+                    multi_choice = input("Mehrfachkodierung (j/n): ").strip().lower()
+                    if multi_choice in ["j", "ja", "y", "yes", "n", "nein", "no"]:
+                        break
+                    print("Ungültige Eingabe. Bitte j oder n wählen.")
+                
+                allow_multi = multi_choice in ["j", "ja", "y", "yes"]
+                answer_type = "multi_categorical" if allow_multi else "categorical"
+                
                 print("\nDefinition/Regeln (optional, Enter zum Überspringen):")
                 print("Hier können Sie Kontext geben, der für die Entscheidung wichtig ist.")
                 definition = input("Definition: ").strip()
@@ -222,12 +235,13 @@ class ConfigManager:
                 try:
                     attr = CheckAttribute(
                         question=question,
-                        answer_type="categorical",
+                        answer_type=answer_type,
                         categories=categories,
                         definition=definition
                     )
                     check_attributes.append(attr)
-                    print(f"✓ Kategoriales Prüfmerkmal hinzugefügt: {question}")
+                    multi_text = " (Mehrfachkodierung)" if allow_multi else ""
+                    print(f"✓ Kategoriales Prüfmerkmal hinzugefügt{multi_text}: {question}")
                     print(f"  Kategorien: {', '.join(categories)}")
                     if definition:
                         print(f"  Definition: {definition}")

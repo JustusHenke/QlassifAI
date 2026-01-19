@@ -1,6 +1,6 @@
 # 🔍 Qlassif-AI
 
-> LLM-basiertes Analysewerkzeug für Excel-Dateien mit offenen Textantworten
+> LLM-basiertes Analysewerkzeug für Excel-Dateien und PDF-Dokumente mit offenen Textantworten
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-green.svg)](https://openai.com/)
@@ -8,14 +8,16 @@
 
 ## 📋 Überblick
 
-Qlassif-AI analysiert automatisch Textantworten in Excel-Dateien mittels Large Language Models (LLMs) und erstellt strukturierte Auswertungen. Das Tool unterstützt:
+Qlassif-AI analysiert automatisch Textantworten in Excel-Dateien und PDF-Dokumenten mittels Large Language Models (LLMs) und erstellt strukturierte Auswertungen. Das Tool unterstützt:
 
+- 📊 **Zwei Verarbeitungsmodi**: Excel-Tabellen oder PDF-Dateien
 - ✨ **Automatische Textanalyse**: Paraphrase, Sentiment mit Begründung, Keywords
 - 🎯 **Benutzerdefinierte Prüfmerkmale**: Eigene Klassifikationsfragen mit Kontext/Regeln
 - 📊 **Keyword-Kategorisierung**: Automatische thematische Gruppierung
 - 📈 **Statistik-Generierung**: Übersichtliche Auswertungen pro Sheet und gesamt
 - 🎨 **Professionelles Design**: Bläuliches Theme für Output-Tabellen
 - 🔄 **Multi-Sheet-Support**: Verarbeitung mehrerer Sheets in einer Datei
+- 📄 **PDF-Verarbeitung**: Intelligente Chunking-Strategie für große Dokumente
 
 ## 🚀 Installation
 
@@ -28,8 +30,8 @@ Qlassif-AI analysiert automatisch Textantworten in Excel-Dateien mittels Large L
 
 ```bash
 # Repository klonen
-git clone https://github.com/JustusHenke/qlassif-ai.git
-cd qlassif-ai
+git clone https://github.com/JustusHenke/QlassifAi.git
+cd QlassifAi
 
 # Abhängigkeiten installieren
 pip install -r requirements.txt
@@ -96,6 +98,12 @@ Erstellen Sie eine `QlassifAI_config.json` im Arbeitsverzeichnis:
       "answer_type": "categorical",
       "categories": ["Hardware", "Software", "Service", "Keine"],
       "definition": "Hardware = physische Geräte; Software = Programme/Apps; Service = Dienstleistungen"
+    },
+    {
+      "question": "Welche Themen werden angesprochen?",
+      "answer_type": "multi_categorical",
+      "categories": ["Preis", "Qualität", "Support"],
+      "definition": "Mehrere Themen können gleichzeitig vorkommen"
     }
   ]
 }
@@ -122,7 +130,7 @@ Erstellen Sie eine `QlassifAI_config.json` im Arbeitsverzeichnis:
 }
 ```
 
-**Categorical (Mehrere Kategorien)**
+**Categorical (Eine Kategorie)**
 ```json
 {
   "question": "Welche Emotion wird ausgedrückt?",
@@ -132,15 +140,41 @@ Erstellen Sie eine `QlassifAI_config.json` im Arbeitsverzeichnis:
 }
 ```
 
+**Multi-Categorical (Mehrere Kategorien gleichzeitig)**
+```json
+{
+  "question": "Welche Themen werden angesprochen?",
+  "answer_type": "multi_categorical",
+  "categories": ["Preis", "Qualität", "Support", "Innovation"],
+  "definition": "Mehrere Themen können gleichzeitig im Text vorkommen"
+}
+```
+
 ## 💻 Verwendung
 
-### Schritt-für-Schritt Anleitung
+### Moduswahl
+
+Beim Start wählen Sie zwischen zwei Verarbeitungsmodi:
 
 ```bash
 python main.py
+
+============================================================
+Qlassif-AI - Moduswahl
+============================================================
+
+Sollen Excel-Tabellen oder PDF-Dateien ausgewertet werden?
+  [1] Excel-Tabellen
+  [2] PDF-Dateien
+
+Bitte wählen Sie (1 oder 2):
 ```
 
-Das Programm führt Sie interaktiv durch folgende Schritte:
+### 📊 Excel-Modus
+
+Analysiert Textantworten in Excel-Tabellen zeilenweise.
+
+**Schritt-für-Schritt:**
 
 1. **📁 Verzeichnisauswahl**: Geben Sie den Ordner mit der Excel-Datei an (Enter für aktuelles Verzeichnis)
 2. **📄 Dateiauswahl**: Wählen Sie eine Excel-Datei aus dem Verzeichnis
@@ -148,7 +182,28 @@ Das Programm führt Sie interaktiv durch folgende Schritte:
 4. **🔄 Verarbeitung**: Das Tool analysiert alle Textantworten (mit Fortschrittsanzeige)
 5. **✅ Ausgabe**: Ergebnisse werden im selben Verzeichnis gespeichert
 
-### Excel-Datei-Format
+### 📄 PDF-Modus
+
+Analysiert PDF-Dokumente als Ganzes mit intelligenter Chunking-Strategie.
+
+**Schritt-für-Schritt:**
+
+1. **📁 Verzeichnisauswahl**: Geben Sie den Ordner mit PDF-Dateien an (Enter für aktuelles Verzeichnis)
+2. **📄 Dateiauswahl**: Das Tool findet automatisch alle PDFs im Verzeichnis
+3. **⚙️ Konfiguration**: Laden Sie eine existierende Config oder erstellen Sie neue Prüfmerkmale
+4. **🔄 Verarbeitung**: 
+   - PDFs werden in Chunks aufgeteilt (max. 15.000 Zeichen)
+   - Jeder Chunk wird einzeln analysiert
+   - Ergebnisse werden pro PDF zusammengeführt
+5. **✅ Ausgabe**: Eine Excel-Datei mit allen PDF-Analysen wird erstellt
+
+**PDF-Besonderheiten:**
+- Große PDFs werden automatisch in handhabbare Chunks aufgeteilt
+- Sentiment wird über alle Chunks gemittelt (-1 = negativ, 0 = gemischt, 1 = positiv)
+- Keywords werden dedupliziert und auf die häufigsten 4 reduziert
+- Prüfmerkmale werden über Mehrheitsentscheidung zusammengeführt
+
+### Excel-Datei-Format (Excel-Modus)
 
 Ihre Excel-Datei muss eine Spalte mit einem der folgenden Namen enthalten:
 - `text`
@@ -168,6 +223,8 @@ Ihre Excel-Datei muss eine Spalte mit einem der folgenden Namen enthalten:
 
 ## 📊 Ausgabe
 
+### Excel-Modus
+
 Das Tool erstellt zwei Excel-Dateien im selben Verzeichnis wie die Eingabedatei:
 
 ### 1. 📋 Analysierte Datei (`*_analyzed.xlsx`)
@@ -180,10 +237,10 @@ Enthält die Originaldaten plus neue Spalten mit **bläulichem Theme**:
 | **Sentiment** | Stimmung der Aussage | "positiv", "negativ", "gemischt" |
 | **Sentiment_Begründung** | Grund für Sentiment (max. 30 Wörter) | "Positive Wortwahl wie 'hilft sehr' und 'zufrieden'" |
 | **Keywords** | 2-4 extrahierte Schlüsselwörter | "Stipendium, Finanzierung, Studium" |
-| **[Prüfmerkmale]** | Antworten auf benutzerdefinierte Fragen | "Ja", "Nein", oder Kategorie |
+| **[Prüfmerkmale]** | Antworten auf benutzerdefinierte Fragen | "Ja", "Nein", Kategorie, oder "nicht kodiert" |
 | **Keyword_Kategorie** | Automatisch zugeordnete Themen | "Finanzierung, Unterstützung" |
 
-> **✨ Neu**: Boolean-Werte werden als "Ja"/"Nein" angezeigt. Zellen bleiben leer, wenn kein Bezug zum Thema besteht.
+> **✨ Neu**: Boolean-Werte werden als "Ja"/"Nein" angezeigt. Wenn kein Bezug zum Thema besteht, wird "nicht kodiert" angezeigt.
 
 ### 2. 📈 Statistik-Datei (`*_statistics.xlsx`)
 
@@ -211,6 +268,39 @@ Zusammen
 └─────────────────┴────────────┴──────────────────────┘
 ```
 
+### PDF-Modus
+
+Das Tool erstellt eine Excel-Datei mit zwei Sheets:
+
+#### 1. 📋 Analyseergebnisse (`*_analyzed.xlsx`)
+
+Enthält eine Zeile pro PDF-Dokument mit **bläulichem Theme**:
+
+| Spalte | Beschreibung | Beispiel |
+|--------|--------------|----------|
+| **Dateiname** | Name der PDF-Datei | "Dokument_01.pdf" |
+| **Paraphrase** | Zusammenfassung des gesamten Dokuments | "Bericht über Projektfortschritt..." |
+| **Sentiment** | Stimmung des Dokuments | "positiv", "negativ", "gemischt" |
+| **Sentiment_Begründung** | Grund für Sentiment | "Überwiegend positive Formulierungen" |
+| **Keywords** | 4 wichtigste Keywords | "Projekt, Erfolg, Team, Innovation" |
+| **[Prüfmerkmale]** | Antworten auf benutzerdefinierte Fragen | "Ja", "Nein", Kategorie, oder "nicht kodiert" |
+| **Keyword_Kategorie** | Automatisch zugeordnete Themen | "Projektmanagement, Innovation" |
+| **Chunk_Anzahl** | Anzahl der analysierten Chunks | 3 |
+
+#### 2. 📈 Statistik-Sheet
+
+Enthält Auswertungen über alle PDFs:
+
+```
+PDF-Analyse Statistiken
+┌─────────────────┬────────────┬──────────────────────┐
+│ Kategorie       │ Häufigkeit │ Keywords             │
+├─────────────────┼────────────┼──────────────────────┤
+│ Innovation      │ 12         │ Projekt, Idee...     │
+│ Qualität        │ 8          │ Standard, Test...    │
+└─────────────────┴────────────┴──────────────────────┘
+```
+
 ## 🎯 Features im Detail
 
 ### ✨ Intelligente Textanalyse
@@ -219,18 +309,23 @@ Zusammen
 - **Keyword-Extraktion**: 2-4 relevante Schlüsselwörter pro Text
 - **Thematische Kategorisierung**: Automatische Gruppierung ähnlicher Keywords
 
+### 📊 Zwei Verarbeitungsmodi
+- **Excel-Modus**: Zeilenweise Analyse von Textantworten in Tabellen
+- **PDF-Modus**: Dokumentenweise Analyse mit intelligenter Chunking-Strategie
+- **Automatische Erkennung**: Wählen Sie beim Start den passenden Modus
+
 ### 🎨 Professionelle Ausgabe
 - **Bläuliches Theme**: Ansprechende Formatierung der Output-Tabellen
 - **Autofilter**: Aktiviert für einfaches Filtern und Sortieren
-- **Multi-Sheet-Support**: Verarbeitung mehrerer Sheets in einer Datei
+- **Multi-Sheet-Support**: Verarbeitung mehrerer Sheets in einer Datei (Excel-Modus)
 - **Separate Statistiken**: Pro Sheet und Gesamt-Übersicht
 
 ### 🔧 Flexible Konfiguration
-- **Benutzerdefinierte Prüfmerkmale**: Boolean oder kategoriale Fragen
+- **Benutzerdefinierte Prüfmerkmale**: Boolean, kategoriale oder multi-kategoriale Fragen
 - **Kontext/Regeln**: Definition für präzisere Klassifikation
 - **Multi-Provider-Support**: OpenAI oder OpenRouter
 - **Modellauswahl**: Wählen Sie zwischen verschiedenen LLM-Modellen
-- **Anpassbare Spaltennamen**: Konfigurierbare Textspalte
+- **Anpassbare Spaltennamen**: Konfigurierbare Textspalte (Excel-Modus)
 
 ### 🚀 Benutzerfreundlich
 - **Interaktive Dialoge**: Schritt-für-Schritt-Anleitung
@@ -257,11 +352,6 @@ qlassif-ai/
 │   ├── statistics_generator.py         # Statistik-Generierung
 │   ├── models.py                       # Datenmodelle
 │   └── logging_config.py               # Logging-Setup
-├── 📂 .kiro/                           # Kiro-Spezifikationen
-│   └── specs/excel-text-classifier/
-│       ├── requirements.md             # Anforderungen
-│       ├── design.md                   # Design-Dokument
-│       └── tasks.md                    # Implementierungsplan
 └── 📊 Sample-Dateien/                  # Beispiel-Daten
     ├── Beispielantworten.xlsx
     └── Sample_Erstsemester_Unterstuetzung.xlsx
@@ -274,7 +364,8 @@ qlassif-ai/
 | Fehler | Ursache | Lösung |
 |--------|---------|--------|
 | `OPENAI_API_KEY nicht gefunden` | API-Key nicht konfiguriert | Erstellen Sie eine `.env`-Datei oder setzen Sie die Umgebungsvariable |
-| `Keine kompatiblen Sheets gefunden` | Falsche Spaltennamen | Stellen Sie sicher, dass eine Spalte "text", "Antwort", "answer" oder "Textantwort" heißt, oder konfigurieren Sie `text_column_name` |
+| `Keine kompatiblen Sheets gefunden` | Falsche Spaltennamen (Excel-Modus) | Stellen Sie sicher, dass eine Spalte "text", "Antwort", "answer" oder "Textantwort" heißt, oder konfigurieren Sie `text_column_name` |
+| `Keine PDF-Dateien gefunden` | Falsches Verzeichnis (PDF-Modus) | Stellen Sie sicher, dass PDF-Dateien im angegebenen Verzeichnis liegen |
 | `API-Timeout` | Netzwerkprobleme | Das Tool versucht automatisch mehrmals. Prüfen Sie Ihre Internetverbindung |
 | `Rate Limit Error` | Zu viele API-Anfragen | Warten Sie kurz und versuchen Sie es erneut |
 

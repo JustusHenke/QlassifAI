@@ -218,3 +218,124 @@ class StatisticsGenerator:
         
         # Speichere
         self.save_statistics(workbook, output_path)
+
+    def generate_pdf_statistics(self,
+                                merged_results: List,  # List[MergedResult]
+                                check_attributes: List,  # List[CheckAttribute]
+                                category_mapping: Dict[str, List[str]],
+                                output_path: Path) -> None:
+        """
+        Erstellt Statistik-Datei für PDF-Analyseergebnisse.
+        
+        Args:
+            merged_results: Liste von MergedResult-Objekten
+            check_attributes: Prüfmerkmale
+            category_mapping: Kategorie-Keyword-Mapping
+            output_path: Zielpfad
+        """
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "PDF-Statistiken"
+        
+        current_row = 1
+        
+        # Überschrift
+        sheet.cell(row=current_row, column=1, value="PDF-Analyse Statistiken")
+        current_row += 2
+        
+        # Gesamt-Statistiken
+        sheet.cell(row=current_row, column=1, value="Gesamt-Übersicht")
+        current_row += 1
+        
+        total_pdfs = len(merged_results)
+        total_chunks = sum(r.chunk_count for r in merged_results)
+        
+        sheet.cell(row=current_row, column=1, value="Gesamt PDFs:")
+        sheet.cell(row=current_row, column=2, value=total_pdfs)
+        current_row += 1
+        
+        sheet.cell(row=current_row, column=1, value="Gesamt Chunks:")
+        sheet.cell(row=current_row, column=2, value=total_chunks)
+        current_row += 2
+        
+        # Keyword-Kategorie-Häufigkeiten
+        sheet.cell(row=current_row, column=1, value="Keyword-Kategorien")
+        current_row += 1
+        
+        sheet.cell(row=current_row, column=1, value="Kategorie")
+        sheet.cell(row=current_row, column=2, value="Häufigkeit")
+        sheet.cell(row=current_row, column=3, value="Keywords")
+        current_row += 1
+        
+        # Zähle Kategorie-Häufigkeiten
+        category_frequencies = {}
+        for result in merged_results:
+            if result.keyword_category:
+                categories = [c.strip() for c in result.keyword_category.split(",")]
+                for category in categories:
+                    if category:
+                        category_frequencies[category] = category_frequencies.get(category, 0) + 1
+        
+        # Sortiere nach Häufigkeit
+        sorted_categories = sorted(category_frequencies.items(), key=lambda x: x[1], reverse=True)
+        
+        # Schreibe Kategorie-Daten
+        keywords_per_category = self.collect_keywords_per_category(category_mapping)
+        for category, frequency in sorted_categories:
+            sheet.cell(row=current_row, column=1, value=category)
+            sheet.cell(row=current_row, column=2, value=frequency)
+            
+            if category in keywords_per_category:
+                keywords_str = ", ".join(sorted(keywords_per_category[category]))
+                sheet.cell(row=current_row, column=3, value=keywords_str)
+            
+            current_row += 1
+        
+        current_row += 1
+        
+        # Custom Check Zusammenfassungen
+        if check_attributes:
+            sheet.cell(row=current_row, column=1, value="Prüfmerkmale-Zusammenfassung")
+            current_row += 1
+            
+            sheet.cell(row=current_row, column=1, value="Prüfmerkmal")
+            sheet.cell(row=current_row, column=2, value="Wert")
+            sheet.cell(row=current_row, column=3, value="Häufigkeit")
+            current_row += 1
+            
+            for attr in check_attributes:
+                question = attr.question
+                
+                # Zähle Werte für dieses Prüfmerkmal
+                value_counts = {}
+                for result in merged_results:
+                    value = result.custom_checks.get(question)
+                    if value is not None:
+                        # Konvertiere Boolean zu Ja/Nein
+                        if attr.answer_type == "boolean":
+                            if isinstance(value, bool):
+                                display_value = "Ja" if value else "Nein"
+                            else:
+                                display_value = str(value)
+                        else:
+                            display_value = str(value)
+                        
+                        value_counts[display_value] = value_counts.get(display_value, 0) + 1
+                
+                # Schreibe Prüfmerkmal-Daten
+                if value_counts:
+                    sorted_values = sorted(value_counts.items(), key=lambda x: x[1], reverse=True)
+                    for idx, (value, count) in enumerate(sorted_values):
+                        if idx == 0:
+                            sheet.cell(row=current_row, column=1, value=question)
+                        sheet.cell(row=current_row, column=2, value=value)
+                        sheet.cell(row=current_row, column=3, value=count)
+                        current_row += 1
+                else:
+                    sheet.cell(row=current_row, column=1, value=question)
+                    sheet.cell(row=current_row, column=2, value="(keine Daten)")
+                    current_row += 1
+        
+        # Speichere
+        self.save_statistics(workbook, output_path)
+        logger.info(f"PDF-Statistiken erstellt: {output_path}")

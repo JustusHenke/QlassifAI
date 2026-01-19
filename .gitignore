@@ -32,7 +32,7 @@ env/
 *.swp
 *.swo
 *~
-kiro/
+*kiro*
 
 # Logs
 *.log
@@ -53,6 +53,8 @@ htmlcov/
 
 Beispielantworten*
 QlassifAI_config.json
+
+Dokumente U*
 
 # Config files (optional - user may want to track these)
 # config.json

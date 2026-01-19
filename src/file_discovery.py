@@ -1,4 +1,4 @@
-"""File Discovery Module für Excel-Dateien"""
+"""File Discovery Module für Excel- und PDF-Dateien"""
 
 from pathlib import Path
 from typing import List
@@ -8,7 +8,7 @@ logger = get_logger("file_discovery")
 
 
 class FileDiscovery:
-    """Durchsucht Verzeichnisse nach Excel-Dateien und präsentiert Auswahloptionen"""
+    """Durchsucht Verzeichnisse nach Excel- oder PDF-Dateien und präsentiert Auswahloptionen"""
     
     def __init__(self):
         """Initialisiert FileDiscovery"""
@@ -108,24 +108,130 @@ class FileDiscovery:
                 logger.info("Dateiauswahl abgebrochen")
                 raise
     
-    def find_and_select_file(self, directory: str = ".") -> Path:
+    def scan_pdf_directory(self, path: str = ".") -> List[Path]:
+        """
+        Scannt Verzeichnis nach .pdf Dateien.
+        
+        Args:
+            path: Pfad zum zu durchsuchenden Verzeichnis (default: aktuelles Verzeichnis)
+            
+        Returns:
+            Liste von Pfaden zu gefundenen PDF-Dateien
+        """
+        directory = Path(path)
+        
+        if not directory.exists():
+            logger.error(f"Verzeichnis existiert nicht: {directory}")
+            return []
+        
+        if not directory.is_dir():
+            logger.error(f"Pfad ist kein Verzeichnis: {directory}")
+            return []
+        
+        # Suche nach PDF-Dateien (case-insensitive)
+        pdf_files = []
+        for file_path in directory.iterdir():
+            if file_path.is_file() and file_path.suffix.lower() == '.pdf':
+                pdf_files.append(file_path)
+        
+        # Sortiere alphabetisch
+        pdf_files.sort()
+        
+        logger.info(f"{len(pdf_files)} PDF-Datei(en) gefunden in {directory}")
+        
+        return pdf_files
+    
+    def present_pdf_selection(self, files: List[Path]) -> Path:
+        """
+        Zeigt interaktive Auswahl für PDF-Dateien und gibt gewählte Datei zurück.
+        
+        Args:
+            files: Liste von PDF-Dateien zur Auswahl
+            
+        Returns:
+            Gewählte Datei als Path
+            
+        Raises:
+            ValueError: Wenn keine Dateien vorhanden oder ungültige Auswahl
+        """
+        if not files:
+            error_msg = "Keine PDF-Dateien zur Auswahl vorhanden"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+        
+        print("\n" + "=" * 60)
+        print("Verfügbare PDF-Dateien:")
+        print("=" * 60)
+        
+        for idx, file in enumerate(files, start=1):
+            # Zeige Dateiname und Größe
+            size_kb = file.stat().st_size / 1024
+            if size_kb > 1024:
+                size_str = f"{size_kb / 1024:.2f} MB"
+            else:
+                size_str = f"{size_kb:.2f} KB"
+            print(f"{idx}. {file.name} ({size_str})")
+        
+        print("=" * 60)
+        
+        while True:
+            try:
+                choice = input(f"\nBitte wählen Sie eine Datei (1-{len(files)}): ").strip()
+                
+                # Erlaube auch direkte Eingabe des Dateinamens
+                if choice in [f.name for f in files]:
+                    selected_file = next(f for f in files if f.name == choice)
+                    logger.info(f"PDF-Datei ausgewählt: {selected_file}")
+                    return selected_file
+                
+                # Versuche als Nummer zu parsen
+                choice_num = int(choice)
+                
+                if 1 <= choice_num <= len(files):
+                    selected_file = files[choice_num - 1]
+                    logger.info(f"PDF-Datei ausgewählt: {selected_file}")
+                    return selected_file
+                else:
+                    print(f"Ungültige Auswahl. Bitte wählen Sie eine Zahl zwischen 1 und {len(files)}.")
+                    
+            except ValueError:
+                print("Ungültige Eingabe. Bitte geben Sie eine Zahl ein.")
+            except KeyboardInterrupt:
+                print("\n\nAbbruch durch Benutzer.")
+                logger.info("PDF-Dateiauswahl abgebrochen")
+                raise
+    
+    def find_and_select_file(self, directory: str = ".", file_type: str = "excel") -> Path:
         """
         Kombiniert Scan und Auswahl in einer Methode.
         
         Args:
             directory: Verzeichnis zum Durchsuchen
+            file_type: "excel" oder "pdf"
             
         Returns:
-            Gewählte Excel-Datei
+            Gewählte Datei
             
         Raises:
-            ValueError: Wenn keine Dateien gefunden
+            ValueError: Wenn keine Dateien gefunden oder ungültiger file_type
         """
-        files = self.scan_directory(directory)
+        if file_type == "excel":
+            files = self.scan_directory(directory)
+            if not files:
+                error_msg = f"Keine Excel-Dateien gefunden in: {directory}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            return self.present_file_selection(files)
         
-        if not files:
-            error_msg = f"Keine Excel-Dateien gefunden in: {directory}"
+        elif file_type == "pdf":
+            files = self.scan_pdf_directory(directory)
+            if not files:
+                error_msg = f"Keine PDF-Dateien gefunden in: {directory}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            return self.present_pdf_selection(files)
+        
+        else:
+            error_msg = f"Ungültiger file_type: {file_type}. Muss 'excel' oder 'pdf' sein."
             logger.error(error_msg)
             raise ValueError(error_msg)
-        
-        return self.present_file_selection(files)

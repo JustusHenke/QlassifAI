@@ -21,6 +21,17 @@
       "definition": "Hardware = physische Geräte; Software = Programme/Apps; Service = Dienstleistungen/Support; Keine = wenn nichts davon zutrifft"
     },
     {
+      "question": "Welche Themen werden angesprochen?",
+      "answer_type": "multi_categorical",
+      "categories": [
+        "Preis",
+        "Qualität",
+        "Support",
+        "Innovation"
+      ],
+      "definition": "Mehrere Themen können gleichzeitig im Text vorkommen. Alle zutreffenden Kategorien werden erfasst."
+    },
+    {
       "question": "Ist die Aussage zukunftsorientiert?",
       "answer_type": "boolean",
       "definition": "Zukunftsorientiert bedeutet Bezug auf zukünftige Entwicklungen, Pläne, Erwartungen oder Prognosen. Vergangenheit oder Gegenwart zählen nicht."

@@ -28,27 +28,27 @@ class SheetInfo:
 class CheckAttribute:
     """Benutzerdefiniertes Prüfmerkmal"""
     question: str
-    answer_type: str  # "boolean" | "categorical"
+    answer_type: str  # "boolean" | "categorical" | "multi_categorical"
     categories: Optional[List[str]] = None
     definition: Optional[str] = None  # Kontext/Regeln für die Entscheidung
     
     def __post_init__(self):
         """Validiert die Daten nach Initialisierung"""
         # Validiere answer_type
-        if self.answer_type not in ["boolean", "categorical"]:
+        if self.answer_type not in ["boolean", "categorical", "multi_categorical"]:
             raise ValueError(
-                f"answer_type muss 'boolean' oder 'categorical' sein, nicht '{self.answer_type}'"
+                f"answer_type muss 'boolean', 'categorical' oder 'multi_categorical' sein, nicht '{self.answer_type}'"
             )
         
         # Validiere question
         if not self.question or not self.question.strip():
             raise ValueError("question darf nicht leer sein")
         
-        # Validiere categories für categorical type
-        if self.answer_type == "categorical":
+        # Validiere categories für categorical und multi_categorical type
+        if self.answer_type in ["categorical", "multi_categorical"]:
             if not self.categories:
                 raise ValueError(
-                    "categories muss für answer_type 'categorical' angegeben werden"
+                    f"categories muss für answer_type '{self.answer_type}' angegeben werden"
                 )
             if len(self.categories) < 2:
                 raise ValueError(
@@ -209,3 +209,153 @@ Token-Statistiken:
             raise ValueError("total_completion_tokens muss >= 0 sein")
         if self.total_tokens < 0:
             raise ValueError("total_tokens muss >= 0 sein")
+
+
+@dataclass
+class PDFInfo:
+    """Informationen über eine PDF-Datei"""
+    path: Path
+    filename: str
+    size_bytes: int
+    page_count: int
+    char_count: int
+    chunk_count: int
+    
+    def __post_init__(self):
+        """Validiert die Daten nach Initialisierung"""
+        if self.size_bytes < 0:
+            raise ValueError("size_bytes muss >= 0 sein")
+        if self.page_count < 0:
+            raise ValueError("page_count muss >= 0 sein")
+        if self.char_count < 0:
+            raise ValueError("char_count muss >= 0 sein")
+        if self.chunk_count < 1:
+            raise ValueError("chunk_count muss >= 1 sein")
+
+
+@dataclass
+class PDFProcessingStats:
+    """Statistiken für PDF-Verarbeitung"""
+    total_pdfs: int = 0
+    successful_pdfs: int = 0
+    failed_pdfs: int = 0
+    total_chunks: int = 0
+    errors: List[str] = field(default_factory=list)
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
+    total_tokens: int = 0
+    
+    def add_pdf_success(self, chunk_count: int, prompt_tokens: int, completion_tokens: int):
+        """
+        Zeichnet erfolgreiche PDF-Verarbeitung auf.
+        
+        Args:
+            chunk_count: Anzahl der Chunks für dieses PDF
+            prompt_tokens: Anzahl Prompt-Tokens
+            completion_tokens: Anzahl Completion-Tokens
+        """
+        self.successful_pdfs += 1
+        self.total_chunks += chunk_count
+        self.total_prompt_tokens += prompt_tokens
+        self.total_completion_tokens += completion_tokens
+        self.total_tokens += (prompt_tokens + completion_tokens)
+    
+    def add_pdf_failure(self, error_msg: str):
+        """
+        Zeichnet fehlgeschlagene PDF-Verarbeitung auf.
+        
+        Args:
+            error_msg: Fehlermeldung
+        """
+        self.failed_pdfs += 1
+        self.errors.append(error_msg)
+    
+    def summary(self) -> str:
+        """
+        Erstellt eine Zusammenfassung der PDF-Verarbeitungsstatistiken.
+        
+        Returns:
+            Formatierte Zusammenfassung als String
+        """
+        if self.total_pdfs == 0:
+            return "Keine PDFs verarbeitet"
+        
+        error_rate = (self.failed_pdfs / self.total_pdfs * 100) if self.total_pdfs > 0 else 0
+        
+        summary = f"""
+PDF-Verarbeitung abgeschlossen:
+- Gesamt: {self.total_pdfs} PDFs
+- Erfolgreich: {self.successful_pdfs}
+- Fehlgeschlagen: {self.failed_pdfs}
+- Fehlerrate: {error_rate:.1f}%
+- Gesamt-Chunks: {self.total_chunks}
+
+Token-Statistiken:
+- Prompt-Tokens: {self.total_prompt_tokens:,}
+- Completion-Tokens: {self.total_completion_tokens:,}
+- Gesamt-Tokens: {self.total_tokens:,}
+"""
+        
+        if self.errors:
+            summary += f"\nFehler ({len(self.errors)}):\n"
+            for error in self.errors[:5]:
+                summary += f"  - {error}\n"
+            if len(self.errors) > 5:
+                summary += f"  ... und {len(self.errors) - 5} weitere Fehler\n"
+        
+        return summary
+    
+    def __post_init__(self):
+        """Validiert die Daten nach Initialisierung"""
+        if self.total_pdfs < 0:
+            raise ValueError("total_pdfs muss >= 0 sein")
+        if self.successful_pdfs < 0:
+            raise ValueError("successful_pdfs muss >= 0 sein")
+        if self.failed_pdfs < 0:
+            raise ValueError("failed_pdfs muss >= 0 sein")
+        if self.total_chunks < 0:
+            raise ValueError("total_chunks muss >= 0 sein")
+
+
+@dataclass
+class Chunk:
+    """Repräsentiert einen Text-Chunk"""
+    chunk_id: int
+    text: str
+    char_count: int
+    start_position: int
+    end_position: int
+    
+    def __post_init__(self):
+        """Validiert die Daten nach Initialisierung"""
+        if self.chunk_id < 0:
+            raise ValueError("chunk_id muss >= 0 sein")
+        if self.char_count < 0:
+            raise ValueError("char_count muss >= 0 sein")
+        if self.start_position < 0:
+            raise ValueError("start_position muss >= 0 sein")
+        if self.end_position < self.start_position:
+            raise ValueError("end_position muss >= start_position sein")
+        if self.char_count != len(self.text):
+            raise ValueError(f"char_count ({self.char_count}) muss der Länge von text ({len(self.text)}) entsprechen")
+
+
+@dataclass
+class MergedResult:
+    """Zusammengeführtes Analyseergebnis für ein PDF-Dokument"""
+    filename: str
+    paraphrase: str
+    sentiment: int  # -1, 0, oder 1
+    sentiment_reason: str
+    keywords: List[str]
+    custom_checks: Dict[str, Union[str, bool]]
+    keyword_category: str
+    chunk_count: int
+    error: Optional[str] = None
+    
+    def __post_init__(self):
+        """Validiert die Daten nach Initialisierung"""
+        if self.sentiment not in [-1, 0, 1]:
+            raise ValueError(f"sentiment muss -1, 0 oder 1 sein, nicht {self.sentiment}")
+        if self.chunk_count < 1:
+            raise ValueError("chunk_count muss >= 1 sein")

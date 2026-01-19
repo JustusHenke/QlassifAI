@@ -69,7 +69,9 @@ Bitte liefere:
                 prompt += f"   - {attr.question}"
                 if attr.answer_type == "boolean":
                     prompt += " (Antwort: true, false, oder null wenn kein Bezug zum Thema besteht)"
-                else:
+                elif attr.answer_type == "multi_categorical":
+                    prompt += f" (Antwort: Array von Kategorien aus {attr.categories}, oder null wenn kein Bezug zum Thema besteht. Mehrere Kategorien können gleichzeitig zutreffen!)"
+                else:  # categorical
                     prompt += f" (Antwort: eine von {attr.categories}, oder null wenn kein Bezug zum Thema besteht)"
                 
                 # Füge Definition hinzu, falls vorhanden
@@ -93,7 +95,9 @@ Antwortformat (strikt einhalten):
                 prompt += f'    "{attr.question}": '
                 if attr.answer_type == "boolean":
                     prompt += "true|false|null"
-                else:
+                elif attr.answer_type == "multi_categorical":
+                    prompt += f'["{attr.categories[0]}", ...]|null'
+                else:  # categorical
                     prompt += f'"{attr.categories[0]}|..."|null'
                 
                 if idx < len(check_attributes) - 1:
