@@ -151,12 +151,10 @@ def main():
             print("\n4. Wähle Excel-Datei...")
             file_discovery = FileDiscovery()
             excel_file = file_discovery.find_and_select_file(str(working_directory), file_type="excel")
-            excel_file = file_discovery.find_and_select_file(str(working_directory), file_type="excel")
         
             # 5. Excel Loader - Datei laden und analysieren (mit konfiguriertem Spaltennamen)
             print("\n5. Lade Excel-Datei...")
             excel_loader = ExcelLoader(custom_text_column=config.text_column_name)
-            sheet_infos = excel_loader.load_and_analyze(excel_file)
             sheet_infos = excel_loader.load_and_analyze(excel_file)
         
             # Zeige detaillierte Übersicht

@@ -50,6 +50,8 @@ htmlcov/
 # Excel output files
 *_analyzed.xlsx
 *_statistics.xlsx
+*_analyzed_*.xlsx
+*_statistics_*.xlsx
 
 Beispielantworten*
 QlassifAI_config.json

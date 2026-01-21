@@ -55,11 +55,63 @@ class ExcelLoader:
             logger.info(f"Excel-Datei geladen: {file_path}")
             logger.info(f"Anzahl Sheets: {len(workbook.sheetnames)}")
             return workbook
+        except KeyError as e:
+            # Manche .xlsx-Dateien enthalten kaputte Drawing/Image-Referenzen.
+            # openpyxl versucht diese zu lesen und bricht dann mit KeyError ab
+            # (z.B. "xl/drawings/drawing1.xml"). In read_only lädt openpyxl i.d.R.
+            # ohne die Drawing-Teile, was für unsere Text-Extraktion genügt.
+            msg = str(e)
+            if "xl/drawings/" in msg or "drawing" in msg.lower():
+                logger.warning(
+                    "Excel-Datei enthält kaputte Drawing-Referenzen (%s). "
+                    "Versuche Fallback mit read_only=True ...",
+                    msg,
+                )
+                try:
+                    workbook = load_workbook(file_path, data_only=True, read_only=True)
+                    logger.info(f"Excel-Datei geladen (read_only): {file_path}")
+                    logger.info(f"Anzahl Sheets: {len(workbook.sheetnames)}")
+                    return workbook
+                except Exception as e2:
+                    error_msg = (
+                        f"Fehler beim Laden der Excel-Datei (Fallback read_only): {e2}. "
+                        "Tipp: Datei in Excel öffnen und als neue .xlsx speichern (oder Bilder/Diagramme entfernen)."
+                    )
+                    logger.error(error_msg)
+                    raise Exception(error_msg)
+
+            error_msg = f"Fehler beim Laden der Excel-Datei: {e}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
         except Exception as e:
             error_msg = f"Fehler beim Laden der Excel-Datei: {e}"
             logger.error(error_msg)
             raise Exception(error_msg)
     
+    @staticmethod
+    def _normalize_header_value(value) -> str:
+        """
+        Normalisiert Header-Zellwerte für robustes Matching.
+        - macht lowercase
+        - entfernt BOM / Zero-Width / NBSP
+        - kollabiert Whitespace
+        """
+        if value is None:
+            return ""
+        try:
+            s = str(value)
+        except Exception:
+            return ""
+
+        # Entferne häufige unsichtbare Zeichen
+        s = (
+            s.replace("\ufeff", "")  # BOM
+            .replace("\u200b", "")   # zero-width space
+            .replace("\u00a0", " ")  # NBSP
+        )
+        s = " ".join(s.strip().lower().split())
+        return s
+
     def locate_text_column(self, sheet: Worksheet, max_header_rows: int = 5) -> Optional[tuple]:
         """
         Findet Index der Textspalte in den ersten N Zeilen.
@@ -74,20 +126,26 @@ class ExcelLoader:
         # Erstelle Liste der zu suchenden Spaltennamen
         if self.custom_text_column:
             # Wenn benutzerdefinierter Name angegeben, nur diesen suchen
-            valid_columns = [self.custom_text_column.lower()]
+            valid_columns = [self._normalize_header_value(self.custom_text_column)]
             logger.info(f"Suche nach benutzerdefinierter Textspalte: '{self.custom_text_column}'")
         else:
             # Sonst Standard-Spaltennamen verwenden
             valid_columns = self.VALID_TEXT_COLUMNS
+
+        valid_columns = [self._normalize_header_value(v) for v in valid_columns]
         
         for row_idx in range(1, min(max_header_rows + 1, sheet.max_row + 1)):
             row = sheet[row_idx]
             
             for col_idx, cell in enumerate(row, start=1):
                 if cell.value:
-                    cell_value = str(cell.value).strip().lower()
-                    
-                    if cell_value in valid_columns:
+                    cell_value_norm = self._normalize_header_value(cell.value)
+
+                    # Exaktmatch oder "enthält"-Match (z.B. "Textantwort (offen)" / "Textantworten")
+                    if (
+                        cell_value_norm in valid_columns
+                        or any(v and v in cell_value_norm for v in valid_columns)
+                    ):
                         logger.info(
                             f"Textspalte '{cell.value}' gefunden in Spalte {col_idx}, "
                             f"Zeile {row_idx}"
