@@ -40,13 +40,15 @@ class LLMAnalyzer:
             self.client = OpenAI(api_key=api_key, timeout=timeout)
             logger.info(f"LLMAnalyzer initialisiert mit OpenAI, Modell: {model}, Timeout: {timeout}s")
     
-    def _build_analysis_prompt(self, text: str, check_attributes: List[CheckAttribute]) -> str:
+    def _build_analysis_prompt(self, text: str, check_attributes: List[CheckAttribute], 
+                              research_question: str = None) -> str:
         """
         Erstellt strukturierten Prompt für LLM.
         
         Args:
             text: Zu analysierender Text
             check_attributes: Benutzerdefinierte Prüfmerkmale
+            research_question: Optionale übergeordnete Untersuchungsfrage für Kontext
             
         Returns:
             Formatierter Prompt
@@ -54,7 +56,18 @@ class LLMAnalyzer:
         prompt = f"""Analysiere folgenden Text und gib die Ergebnisse im JSON-Format zurück:
 
 Text: "{text}"
+"""
+        
+        # Füge Untersuchungsfrage hinzu, falls vorhanden
+        if research_question:
+            prompt += f"""
+KONTEXT - Übergeordnete Untersuchungsfrage:
+"{research_question}"
 
+Beachte diese Untersuchungsfrage bei der Bewertung aller Prüfmerkmale.
+"""
+        
+        prompt += """
 Bitte liefere:
 1. Paraphrase: Eine KOMPAKTE, umformulierte Version der Kernaussage (maximal 1-2 Sätze)
 2. Sentiment: Klassifiziere als "positiv", "negativ" oder "gemischt"
@@ -233,13 +246,14 @@ WICHTIG:
             raise ValueError(error_msg)
     
     def analyze_text(self, text: str, check_attributes: List[CheckAttribute], 
-                    max_retries: int = 3) -> AnalysisResult:
+                    research_question: str = None, max_retries: int = 3) -> AnalysisResult:
         """
         Führt vollständige Analyse eines Textes durch.
         
         Args:
             text: Zu analysierender Text
             check_attributes: Benutzerdefinierte Prüfmerkmale
+            research_question: Optionale übergeordnete Untersuchungsfrage für Kontext
             max_retries: Maximale Anzahl Wiederholungsversuche
             
         Returns:
@@ -258,7 +272,7 @@ WICHTIG:
             )
         
         # Baue Prompt
-        prompt = self._build_analysis_prompt(text, check_attributes)
+        prompt = self._build_analysis_prompt(text, check_attributes, research_question)
         
         # Versuche API-Aufruf mit Retries
         for attempt in range(max_retries):

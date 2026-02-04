@@ -8,7 +8,7 @@
 
 ## 📋 Überblick
 
-Qlassif-AI analysiert automatisch Textantworten in Excel-Dateien und PDF-Dokumenten mittels Large Language Models (LLMs) und erstellt strukturierte Auswertungen. Das Tool unterstützt:
+Qlassif*AI* analysiert automatisch Textantworten in Excel-Dateien und PDF-Dokumenten mittels Large Language Models (LLMs) und erstellt strukturierte Auswertungen. Das Tool unterstützt:
 
 - 📊 **Zwei Verarbeitungsmodi**: Excel-Tabellen oder PDF-Dateien
 - ✨ **Automatische Textanalyse**: Paraphrase, Sentiment mit Begründung, Keywords
@@ -87,6 +87,7 @@ Erstellen Sie eine `QlassifAI_config.json` im Arbeitsverzeichnis:
   "provider": "openai",
   "model": "gpt-4o-mini",
   "text_column_name": "Textantwort",
+  "research_question": "Wie bewerten Studierende die Unterstützungsangebote im ersten Semester?",
   "check_attributes": [
     {
       "question": "Wird über Wettbewerb gesprochen?",
@@ -117,7 +118,10 @@ Erstellen Sie eine `QlassifAI_config.json` im Arbeitsverzeichnis:
 | `provider` | string | LLM-Provider | `"openai"`, `"openrouter"` |
 | `model` | string | Modell-Name | `"gpt-4o-mini"`, `"anthropic/claude-3.5-sonnet"` |
 | `text_column_name` | string (optional) | Name der Textspalte | `"Textantwort"`, `"text"` |
+| `research_question` | string (optional) | Übergeordnete Untersuchungsfrage für Kontext | `"Wie bewerten Studierende...?"` |
 | `check_attributes` | array | Liste der Prüfmerkmale | siehe unten |
+
+> **💡 Neu**: Mit `research_question` können Sie eine übergeordnete Forschungsfrage definieren, die zusätzlichen Kontext für alle Prüfmerkmale liefert. Dies hilft dem LLM, die Prüffragen im richtigen Zusammenhang zu bewerten.
 
 #### 🎯 Prüfmerkmal-Typen
 
@@ -475,6 +479,7 @@ cat > QlassifAI_config.json << EOF
   "version": "1.0",
   "model": "gpt-4o-mini",
   "text_column_name": "Feedback",
+  "research_question": "Wie zufrieden sind Kunden mit unserem Service?",
   "check_attributes": [
     {
       "question": "Enthält konstruktive Kritik?",
@@ -489,14 +494,6 @@ EOF
 python main.py
 ```
 
-## 🤝 Beitragen
-
-Dieses Projekt wurde mit **Spec-Driven Development** erstellt. Die vollständigen Spezifikationen finden Sie in `.kiro/specs/excel-text-classifier/`.
-
-### Entwicklungsprozess
-1. **Requirements**: Anforderungen in EARS-Format
-2. **Design**: Architektur und Correctness Properties
-3. **Tasks**: Implementierungsplan mit Property-Based Tests
 
 ## 📄 Lizenz
 

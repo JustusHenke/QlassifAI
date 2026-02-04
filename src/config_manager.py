@@ -82,17 +82,21 @@ class ConfigManager:
             model = data.get("model", "gpt-4o-mini")
             provider = data.get("provider", "openai")
             text_column_name = data.get("text_column_name")
+            research_question = data.get("research_question")
             config = Config(
                 check_attributes=check_attributes,
                 version=version,
                 model=model,
                 provider=provider,
-                text_column_name=text_column_name
+                text_column_name=text_column_name,
+                research_question=research_question
             )
             
             logger.info(f"{len(check_attributes)} Prüfmerkmal(e) geladen, Provider: {provider}, Modell: {model}")
             if text_column_name:
                 logger.info(f"Textspaltenname: {text_column_name}")
+            if research_question:
+                logger.info(f"Untersuchungsfrage: {research_question}")
             return config
             
         except json.JSONDecodeError as e:
@@ -127,6 +131,9 @@ class ConfigManager:
         if config.text_column_name:
             data["text_column_name"] = config.text_column_name
         
+        if config.research_question:
+            data["research_question"] = config.research_question
+        
         for attr in config.check_attributes:
             attr_data = {
                 "question": attr.question,
@@ -158,6 +165,16 @@ class ConfigManager:
         print("\nSie können eigene Prüfmerkmale definieren, die für jede")
         print("Textantwort ausgewertet werden.")
         print()
+        
+        # Optionale Untersuchungsfrage
+        print("\n--- Untersuchungsfrage (optional) ---")
+        print("Eine übergeordnete Forschungsfrage kann zusätzlichen Kontext")
+        print("für alle Prüffragen liefern.")
+        research_question = input("Untersuchungsfrage (Enter zum Überspringen): ").strip()
+        research_question = research_question if research_question else None
+        
+        if research_question:
+            print(f"✓ Untersuchungsfrage gesetzt: {research_question}")
         
         check_attributes = []
         
@@ -250,9 +267,14 @@ class ConfigManager:
                     continue
         
         # Erstelle Config
-        config = Config(check_attributes=check_attributes)
+        config = Config(
+            check_attributes=check_attributes,
+            research_question=research_question
+        )
         
         print("\n" + "=" * 60)
+        if research_question:
+            print(f"✓ Untersuchungsfrage: {research_question}")
         print(f"✓ {len(check_attributes)} Prüfmerkmal(e) definiert")
         print("=" * 60)
         
@@ -286,6 +308,8 @@ class ConfigManager:
                     print(f"✓ Verwendetes Modell: {config.model}")
                     if config.text_column_name:
                         print(f"✓ Textspaltenname: {config.text_column_name}")
+                    if config.research_question:
+                        print(f"✓ Untersuchungsfrage: {config.research_question}")
                     return config
                 except InvalidConfigError as e:
                     print(f"✗ Fehler beim Laden: {e}")

@@ -70,6 +70,7 @@ class Config:
     model: str = "gpt-4o-mini"
     provider: str = "openai"  # "openai" oder "openrouter"
     text_column_name: Optional[str] = None  # Optionaler Name der Textspalte
+    research_question: Optional[str] = None  # Optionale Untersuchungsfrage für Kontext
     
     def __post_init__(self):
         """Validiert die Daten nach Initialisierung"""

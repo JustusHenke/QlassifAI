@@ -201,7 +201,11 @@ def main():
                     print(f"  Zeile {idx}/{len(sheet_info.data_rows)}: ", end="", flush=True)
                 
                     # Analysiere
-                    result = llm_analyzer.analyze_text(text, config.check_attributes)
+                    result = llm_analyzer.analyze_text(
+                        text, 
+                        config.check_attributes,
+                        config.research_question
+                    )
                 
                     if result.error:
                         print(f"✗ Fehler: {result.error}")

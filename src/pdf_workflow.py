@@ -95,7 +95,8 @@ def process_pdf_mode(working_directory: str, config: Config, api_key: str) -> tu
                 
                 result = llm_analyzer.analyze_text(
                     text=chunk.text,
-                    check_attributes=config.check_attributes
+                    check_attributes=config.check_attributes,
+                    research_question=config.research_question
                 )
                 
                 if result.error:
