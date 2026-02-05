@@ -122,9 +122,10 @@ Erstellen Sie eine `QlassifAI_config.json` im Arbeitsverzeichnis:
 | `include_reasoning` | boolean (optional) | Ob Begründungen für Prüfmerkmale generiert werden (default: true) | `true`, `false` |
 | `check_attributes` | array | Liste der Prüfmerkmale | siehe unten |
 
-> **💡 Neu**: Mit `research_question` können Sie eine übergeordnete Forschungsfrage definieren, die zusätzlichen Kontext für alle Prüfmerkmale liefert. Dies hilft dem LLM, die Prüffragen im richtigen Zusammenhang zu bewerten.
-
-> **💡 Performance-Tipp**: Setzen Sie `include_reasoning` auf `false`, um Begründungsspalten zu deaktivieren. Dies reduziert die Token-Nutzung und beschleunigt die Analyse, wenn Sie nur die Klassifikationsergebnisse benötigen.
+**Hinweise:**
+- `research_question`: Liefert thematischen Kontext für alle Prüfmerkmale (siehe unten)
+- `include_reasoning`: Deaktivieren (`false`) spart Token und beschleunigt die Analyse
+- `text_column_name`: Nur nötig, wenn Ihre Textspalte anders heißt als "text", "Antwort", "answer" oder "Textantwort"
 
 #### 🎯 Prüfmerkmal-Typen
 
@@ -156,6 +157,61 @@ Erstellen Sie eine `QlassifAI_config.json` im Arbeitsverzeichnis:
   "definition": "Mehrere Themen können gleichzeitig im Text vorkommen"
 }
 ```
+
+#### 🧠 Erweiterte Konfigurationsoptionen
+
+**Forschungsfrage (`research_question`)**
+
+Die optionale Forschungsfrage liefert dem LLM zusätzlichen Kontext für die Bewertung aller Prüfmerkmale. Sie hilft dabei, die Prüffragen im richtigen thematischen Zusammenhang zu interpretieren.
+
+**Beispiel:**
+```json
+{
+  "research_question": "Wie bewerten Studierende die Unterstützungsangebote im ersten Semester?",
+  "check_attributes": [
+    {
+      "question": "Wird finanzielle Unterstützung erwähnt?",
+      "answer_type": "boolean"
+    }
+  ]
+}
+```
+
+Mit der Forschungsfrage versteht das LLM, dass "finanzielle Unterstützung" im Kontext von Studierendenförderung gemeint ist, nicht etwa Unternehmensfinanzierung.
+
+**Begründungen (`include_reasoning`)**
+
+Standardmäßig (`true`) generiert das Tool für jedes Prüfmerkmal eine kurze Begründung (max. 20 Wörter), warum eine bestimmte Klassifikation gewählt wurde. Diese Begründungen:
+
+- **Erhöhen die Transparenz**: Sie können nachvollziehen, warum das LLM eine Entscheidung getroffen hat
+- **Ermöglichen Qualitätskontrolle**: Stichprobenartige Überprüfung der Klassifikationslogik
+- **Kosten Token**: Jede Begründung erhöht den Token-Verbrauch
+
+Setzen Sie `include_reasoning: false`, wenn Sie:
+- Nur die Klassifikationsergebnisse benötigen
+- Token-Kosten minimieren möchten
+- Große Datenmengen verarbeiten und Geschwindigkeit priorisieren
+
+**Prüfmerkmal-Logik**
+
+Das Tool verwendet eine intelligente Klassifikationslogik:
+
+1. **Themenrelevanz prüfen**: Wenn ein Text keinen Bezug zum Prüfmerkmal hat, wird `"nicht kodiert"` ausgegeben (statt einer erzwungenen Klassifikation)
+
+2. **Boolean-Werte**: Werden als `"Ja"` oder `"Nein"` dargestellt (nicht als `true`/`false`)
+
+3. **Kategoriale Werte**: Bei `categorical` wird genau eine Kategorie gewählt, bei `multi_categorical` können mehrere Kategorien gleichzeitig zutreffen
+
+4. **Definition nutzen**: Das optionale `definition`-Feld gibt dem LLM präzise Regeln für die Klassifikation
+
+**Beispiel für "nicht kodiert":**
+```
+Text: "Das Wetter war heute schön."
+Prüfmerkmal: "Wird über Studienfinanzierung gesprochen?"
+Ergebnis: "nicht kodiert" (statt erzwungenem "Nein")
+```
+
+Dies verhindert falsch-negative Klassifikationen bei thematisch irrelevanten Texten.
 
 ## 💻 Verwendung
 
