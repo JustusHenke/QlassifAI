@@ -41,7 +41,7 @@ class LLMAnalyzer:
             logger.info(f"LLMAnalyzer initialisiert mit OpenAI, Modell: {model}, Timeout: {timeout}s")
     
     def _build_analysis_prompt(self, text: str, check_attributes: List[CheckAttribute], 
-                              research_question: str = None) -> str:
+                              research_question: str = None, include_reasoning: bool = True) -> str:
         """
         Erstellt strukturierten Prompt für LLM.
         
@@ -49,6 +49,7 @@ class LLMAnalyzer:
             text: Zu analysierender Text
             check_attributes: Benutzerdefinierte Prüfmerkmale
             research_question: Optionale übergeordnete Untersuchungsfrage für Kontext
+            include_reasoning: Ob Begründungen für Prüfmerkmale generiert werden sollen
             
         Returns:
             Formatierter Prompt
@@ -92,8 +93,9 @@ Bitte liefere:
                     prompt += f"\n     Definition/Regeln: {attr.definition}"
                 prompt += "\n"
             
-            prompt += "\n6. Begründungen für Prüfmerkmale:\n"
-            prompt += "   Für jedes Prüfmerkmal: KURZE Begründung (maximal 20 Wörter) warum diese Antwort gewählt wurde.\n"
+            if include_reasoning:
+                prompt += "\n6. Begründungen für Prüfmerkmale:\n"
+                prompt += "   Für jedes Prüfmerkmal: KURZE Begründung (maximal 20 Wörter) warum diese Antwort gewählt wurde.\n"
         
         prompt += """
 Antwortformat (strikt einhalten):
@@ -121,26 +123,39 @@ Antwortformat (strikt einhalten):
                 else:
                     prompt += "\n"
         
-        prompt += """  },
+        prompt += """  }"""
+        
+        if include_reasoning:
+            prompt += """,
   "custom_checks_reasons": {
 """
+            
+            if check_attributes:
+                for idx, attr in enumerate(check_attributes):
+                    prompt += f'    "{attr.question}": "kurze Begründung (max 20 Wörter)"'
+                    if idx < len(check_attributes) - 1:
+                        prompt += ",\n"
+                    else:
+                        prompt += "\n"
+            
+            prompt += """  }
+}"""
+        else:
+            prompt += """
+}"""
         
-        if check_attributes:
-            for idx, attr in enumerate(check_attributes):
-                prompt += f'    "{attr.question}": "kurze Begründung (max 20 Wörter)"'
-                if idx < len(check_attributes) - 1:
-                    prompt += ",\n"
-                else:
-                    prompt += "\n"
-        
-        prompt += """  }
-}
+        prompt += """
 
 WICHTIG: 
 - Antworte NUR mit dem JSON-Objekt, ohne zusätzlichen Text
 - Halte die Paraphrase KOMPAKT (maximal 1-2 Sätze)
-- Halte die Sentiment_Begründung KURZ (maximal 30 Wörter)
-- Halte die Prüfmerkmal-Begründungen SEHR KURZ (maximal 20 Wörter)
+- Halte die Sentiment_Begründung KURZ (maximal 30 Wörter)"""
+        
+        if include_reasoning:
+            prompt += """
+- Halte die Prüfmerkmal-Begründungen SEHR KURZ (maximal 20 Wörter)"""
+        
+        prompt += """
 - Setze Prüfmerkmale auf null, wenn der Text KEINEN Bezug zum Thema hat"""
         
         return prompt
@@ -246,7 +261,8 @@ WICHTIG:
             raise ValueError(error_msg)
     
     def analyze_text(self, text: str, check_attributes: List[CheckAttribute], 
-                    research_question: str = None, max_retries: int = 3) -> AnalysisResult:
+                    research_question: str = None, include_reasoning: bool = True, 
+                    max_retries: int = 3) -> AnalysisResult:
         """
         Führt vollständige Analyse eines Textes durch.
         
@@ -254,6 +270,7 @@ WICHTIG:
             text: Zu analysierender Text
             check_attributes: Benutzerdefinierte Prüfmerkmale
             research_question: Optionale übergeordnete Untersuchungsfrage für Kontext
+            include_reasoning: Ob Begründungen für Prüfmerkmale generiert werden sollen
             max_retries: Maximale Anzahl Wiederholungsversuche
             
         Returns:
@@ -272,7 +289,7 @@ WICHTIG:
             )
         
         # Baue Prompt
-        prompt = self._build_analysis_prompt(text, check_attributes, research_question)
+        prompt = self._build_analysis_prompt(text, check_attributes, research_question, include_reasoning)
         
         # Versuche API-Aufruf mit Retries
         for attempt in range(max_retries):

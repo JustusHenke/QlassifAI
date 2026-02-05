@@ -127,7 +127,8 @@ def main():
                 merged_results=merged_results,
                 check_attributes=config.check_attributes,
                 category_mapping=category_mapping,
-                output_path=output_file
+                output_path=output_file,
+                include_reasoning=config.include_reasoning
             )
             
             # Fertig
@@ -204,7 +205,8 @@ def main():
                     result = llm_analyzer.analyze_text(
                         text, 
                         config.check_attributes,
-                        config.research_question
+                        config.research_question,
+                        config.include_reasoning
                     )
                 
                     if result.error:
@@ -240,7 +242,8 @@ def main():
                 category_assignments=category_assignments,
                 check_attributes=config.check_attributes,
                 category_mapping=category_mapping,
-                output_path=output_file
+                output_path=output_file,
+                include_reasoning=config.include_reasoning
             )
         
             # Fertig

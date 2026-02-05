@@ -119,9 +119,12 @@ Erstellen Sie eine `QlassifAI_config.json` im Arbeitsverzeichnis:
 | `model` | string | Modell-Name | `"gpt-4o-mini"`, `"anthropic/claude-3.5-sonnet"` |
 | `text_column_name` | string (optional) | Name der Textspalte | `"Textantwort"`, `"text"` |
 | `research_question` | string (optional) | Übergeordnete Untersuchungsfrage für Kontext | `"Wie bewerten Studierende...?"` |
+| `include_reasoning` | boolean (optional) | Ob Begründungen für Prüfmerkmale generiert werden (default: true) | `true`, `false` |
 | `check_attributes` | array | Liste der Prüfmerkmale | siehe unten |
 
 > **💡 Neu**: Mit `research_question` können Sie eine übergeordnete Forschungsfrage definieren, die zusätzlichen Kontext für alle Prüfmerkmale liefert. Dies hilft dem LLM, die Prüffragen im richtigen Zusammenhang zu bewerten.
+
+> **💡 Performance-Tipp**: Setzen Sie `include_reasoning` auf `false`, um Begründungsspalten zu deaktivieren. Dies reduziert die Token-Nutzung und beschleunigt die Analyse, wenn Sie nur die Klassifikationsergebnisse benötigen.
 
 #### 🎯 Prüfmerkmal-Typen
 

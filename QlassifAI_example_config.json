@@ -4,6 +4,7 @@
   "model": "gpt-4o-mini",
   "text_column_name": "Textantwort",
   "research_question": "Wie bewerten Studierende die Unterstützungsangebote im ersten Semester?",
+  "include_reasoning": true,
   "check_attributes": [
     {
       "question": "Wird über Wettbewerb gesprochen?",

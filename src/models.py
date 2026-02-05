@@ -71,6 +71,7 @@ class Config:
     provider: str = "openai"  # "openai" oder "openrouter"
     text_column_name: Optional[str] = None  # Optionaler Name der Textspalte
     research_question: Optional[str] = None  # Optionale Untersuchungsfrage für Kontext
+    include_reasoning: bool = True  # Ob Begründungen für Prüfmerkmale generiert werden sollen
     
     def __post_init__(self):
         """Validiert die Daten nach Initialisierung"""

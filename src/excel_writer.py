@@ -24,7 +24,8 @@ class ExcelWriter:
                                         category_assignments: List[List[str]],
                                         check_attributes: List[CheckAttribute],
                                         category_mapping: Dict[str, List[str]],
-                                        output_path: Path) -> None:
+                                        output_path: Path,
+                                        include_reasoning: bool = True) -> None:
         """
         Erstellt eine komplett neue Excel-Datei mit Originaldaten, Analyseergebnissen und Statistiken.
         
@@ -35,6 +36,7 @@ class ExcelWriter:
             check_attributes: Prüfmerkmale
             category_mapping: Kategorie-Keyword-Mapping
             output_path: Pfad für die neue Datei
+            include_reasoning: Ob Begründungsspalten hinzugefügt werden sollen
         """
         # Erstelle neues Workbook
         new_workbook = Workbook()
@@ -69,7 +71,8 @@ class ExcelWriter:
             result_columns = ["Paraphrase", "Sentiment", "Sentiment_Begründung", "Keywords"]
             for attr in check_attributes:
                 result_columns.append(attr.question)
-                result_columns.append(f"{attr.question} (Begründung)")
+                if include_reasoning:
+                    result_columns.append(f"{attr.question} (Begründung)")
             result_columns.append("Keyword_Kategorie")
             
             start_col = col_count + 1
@@ -142,9 +145,10 @@ class ExcelWriter:
                     
                     col_offset += 1
                     
-                    # Begründung
-                    new_sheet.cell(row=new_row_idx, column=start_col + col_offset, value=reason if reason else "")
-                    col_offset += 1
+                    # Begründung (nur wenn include_reasoning aktiviert)
+                    if include_reasoning:
+                        new_sheet.cell(row=new_row_idx, column=start_col + col_offset, value=reason if reason else "")
+                        col_offset += 1
                 
                 # Keyword_Kategorie
                 categories_str = ", ".join(categories)
@@ -278,7 +282,8 @@ class ExcelWriter:
                                     merged_results: List,  # List[MergedResult]
                                     check_attributes: List[CheckAttribute],
                                     category_mapping: Dict[str, List[str]],
-                                    output_path: Path) -> None:
+                                    output_path: Path,
+                                    include_reasoning: bool = True) -> None:
         """
         Erstellt Excel-Datei mit PDF-Analyseergebnissen und Statistiken.
         
@@ -287,6 +292,7 @@ class ExcelWriter:
             check_attributes: Prüfmerkmale
             category_mapping: Kategorie-Keyword-Mapping
             output_path: Pfad für die neue Datei
+            include_reasoning: Ob Begründungsspalten hinzugefügt werden sollen
         """
         # Erstelle neues Workbook
         workbook = Workbook()
@@ -304,7 +310,8 @@ class ExcelWriter:
         headers = ["Dateiname", "Paraphrase", "Sentiment", "Sentiment_Begründung", "Keywords"]
         for attr in check_attributes:
             headers.append(attr.question)
-            headers.append(f"{attr.question} (Begründung)")
+            if include_reasoning:
+                headers.append(f"{attr.question} (Begründung)")
         headers.extend(["Keyword_Kategorie", "Chunk_Anzahl"])
         
         for col_idx, header in enumerate(headers, start=1):
@@ -375,9 +382,10 @@ class ExcelWriter:
                 
                 col_idx += 1
                 
-                # Begründung
-                sheet.cell(row=row_idx, column=col_idx, value=reason if reason else "")
-                col_idx += 1
+                # Begründung (nur wenn include_reasoning aktiviert)
+                if include_reasoning:
+                    sheet.cell(row=row_idx, column=col_idx, value=reason if reason else "")
+                    col_idx += 1
             
             # Keyword_Kategorie
             sheet.cell(row=row_idx, column=col_idx, value=result.keyword_category)

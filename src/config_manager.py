@@ -83,13 +83,15 @@ class ConfigManager:
             provider = data.get("provider", "openai")
             text_column_name = data.get("text_column_name")
             research_question = data.get("research_question")
+            include_reasoning = data.get("include_reasoning", True)  # Default: True
             config = Config(
                 check_attributes=check_attributes,
                 version=version,
                 model=model,
                 provider=provider,
                 text_column_name=text_column_name,
-                research_question=research_question
+                research_question=research_question,
+                include_reasoning=include_reasoning
             )
             
             logger.info(f"{len(check_attributes)} Prüfmerkmal(e) geladen, Provider: {provider}, Modell: {model}")
@@ -97,6 +99,7 @@ class ConfigManager:
                 logger.info(f"Textspaltenname: {text_column_name}")
             if research_question:
                 logger.info(f"Untersuchungsfrage: {research_question}")
+            logger.info(f"Begründungen einbeziehen: {include_reasoning}")
             return config
             
         except json.JSONDecodeError as e:
@@ -133,6 +136,10 @@ class ConfigManager:
         
         if config.research_question:
             data["research_question"] = config.research_question
+        
+        # Nur hinzufügen wenn nicht Default (True)
+        if not config.include_reasoning:
+            data["include_reasoning"] = False
         
         for attr in config.check_attributes:
             attr_data = {
