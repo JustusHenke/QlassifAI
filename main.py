@@ -106,7 +106,7 @@ def main():
                     custom_checks_reasons={}  # Wird bei PDF-Merge nicht verwendet
                 ))
             
-            category_mapping, category_assignments = keyword_categorizer.categorize_all(temp_results)
+            keyword_to_category, category_assignments = keyword_categorizer.categorize_all(temp_results)
             
             # Aktualisiere merged_results mit Kategorien
             for result, categories in zip(merged_results, category_assignments):
@@ -126,7 +126,7 @@ def main():
             excel_writer.create_pdf_results_workbook(
                 merged_results=merged_results,
                 check_attributes=config.check_attributes,
-                category_mapping=category_mapping,
+                keyword_to_category=keyword_to_category,
                 output_path=output_file,
                 include_reasoning=config.include_reasoning
             )
@@ -227,7 +227,7 @@ def main():
             # 8. Keyword Categorizer - Kategorisiere Keywords
             print("\n8. Kategorisiere Keywords...")
             keyword_categorizer = KeywordCategorizer(llm_analyzer)
-            category_mapping, category_assignments = keyword_categorizer.categorize_all(all_results)
+            keyword_to_category, category_assignments = keyword_categorizer.categorize_all(all_results)
         
             # 9. Excel Writer - Erstelle neue Excel-Datei mit Ergebnissen
             print("\n9. Erstelle neue Excel-Datei mit Ergebnissen...")
@@ -241,7 +241,7 @@ def main():
                 all_results=all_results,
                 category_assignments=category_assignments,
                 check_attributes=config.check_attributes,
-                category_mapping=category_mapping,
+                keyword_to_category=keyword_to_category,
                 output_path=output_file,
                 include_reasoning=config.include_reasoning
             )

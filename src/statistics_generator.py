@@ -74,21 +74,22 @@ class StatisticsGenerator:
         return per_sheet_frequencies
     
     def collect_keywords_per_category(self,
-                                     category_mapping: Dict[str, List[str]]) -> Dict[str, Set[str]]:
+                                     keyword_to_category: Dict[str, str]) -> Dict[str, Set[str]]:
         """
-        Sammelt alle Keywords pro Kategorie.
+        Sammelt alle Keywords pro Kategorie (invertiert das Mapping).
         
         Args:
-            category_mapping: Mapping von Kategorien zu Keywords
+            keyword_to_category: Mapping von Keyword -> Kategorie
             
         Returns:
             Dictionary mit Kategorien und deduplizierten Keywords
         """
         keywords_per_category = {}
         
-        for category, keywords in category_mapping.items():
-            # Dedupliziere Keywords
-            keywords_per_category[category] = set(keywords)
+        for keyword, category in keyword_to_category.items():
+            if category not in keywords_per_category:
+                keywords_per_category[category] = set()
+            keywords_per_category[category].add(keyword)
         
         logger.info(f"Keywords für {len(keywords_per_category)} Kategorien gesammelt")
         return keywords_per_category
@@ -188,7 +189,7 @@ class StatisticsGenerator:
                            sheet_names: List[str],
                            sheet_row_counts: List[int],
                            category_assignments: List[List[str]],
-                           category_mapping: Dict[str, List[str]],
+                           keyword_to_category: Dict[str, str],
                            output_path: Path) -> None:
         """
         Führt vollständige Statistik-Generierung durch.
@@ -197,7 +198,7 @@ class StatisticsGenerator:
             sheet_names: Namen der Sheets
             sheet_row_counts: Anzahl Zeilen pro Sheet
             category_assignments: Kategorie-Zuordnungen
-            category_mapping: Kategorie-Keyword-Mapping
+            keyword_to_category: Keyword-Kategorie-Mapping
             output_path: Zielpfad
         """
         # Berechne Per-Sheet-Häufigkeiten
@@ -208,8 +209,8 @@ class StatisticsGenerator:
         # Berechne Gesamt-Häufigkeiten
         total_frequencies = self.calculate_category_frequencies(category_assignments)
         
-        # Sammle Keywords
-        keywords_per_category = self.collect_keywords_per_category(category_mapping)
+        # Sammle Keywords (invertiere Mapping)
+        keywords_per_category = self.collect_keywords_per_category(keyword_to_category)
         
         # Erstelle Workbook
         workbook = self.create_statistics_workbook(
@@ -222,7 +223,7 @@ class StatisticsGenerator:
     def generate_pdf_statistics(self,
                                 merged_results: List,  # List[MergedResult]
                                 check_attributes: List,  # List[CheckAttribute]
-                                category_mapping: Dict[str, List[str]],
+                                keyword_to_category: Dict[str, str],
                                 output_path: Path) -> None:
         """
         Erstellt Statistik-Datei für PDF-Analyseergebnisse.
@@ -230,7 +231,7 @@ class StatisticsGenerator:
         Args:
             merged_results: Liste von MergedResult-Objekten
             check_attributes: Prüfmerkmale
-            category_mapping: Kategorie-Keyword-Mapping
+            keyword_to_category: Keyword-Kategorie-Mapping
             output_path: Zielpfad
         """
         workbook = Workbook()
@@ -279,8 +280,10 @@ class StatisticsGenerator:
         # Sortiere nach Häufigkeit
         sorted_categories = sorted(category_frequencies.items(), key=lambda x: x[1], reverse=True)
         
+        # Sammle Keywords pro Kategorie (invertiere Mapping)
+        keywords_per_category = self.collect_keywords_per_category(keyword_to_category)
+        
         # Schreibe Kategorie-Daten
-        keywords_per_category = self.collect_keywords_per_category(category_mapping)
         for category, frequency in sorted_categories:
             sheet.cell(row=current_row, column=1, value=category)
             sheet.cell(row=current_row, column=2, value=frequency)

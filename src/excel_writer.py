@@ -23,7 +23,7 @@ class ExcelWriter:
                                         all_results: List[AnalysisResult],
                                         category_assignments: List[List[str]],
                                         check_attributes: List[CheckAttribute],
-                                        category_mapping: Dict[str, List[str]],
+                                        keyword_to_category: Dict[str, str],
                                         output_path: Path,
                                         include_reasoning: bool = True) -> None:
         """
@@ -34,7 +34,7 @@ class ExcelWriter:
             all_results: Liste aller AnalysisResult-Objekte
             category_assignments: Liste der Kategorie-Zuordnungen
             check_attributes: Prüfmerkmale
-            category_mapping: Kategorie-Keyword-Mapping
+            keyword_to_category: Keyword-Kategorie-Mapping
             output_path: Pfad für die neue Datei
             include_reasoning: Ob Begründungsspalten hinzugefügt werden sollen
         """
@@ -171,19 +171,70 @@ class ExcelWriter:
         cell.font = Font(bold=True, size=14)
         current_row += 2
         
-        # Gesamt-Übersicht
-        cell = stats_sheet.cell(row=current_row, column=1, value="Gesamt-Übersicht")
-        cell.font = Font(bold=True)
-        current_row += 1
+        # Berechne Per-Sheet-Statistiken
+        result_idx = 0
+        per_sheet_frequencies = {}
         
-        total_rows = len(all_results)
-        stats_sheet.cell(row=current_row, column=1, value="Gesamt Zeilen:")
-        stats_sheet.cell(row=current_row, column=2, value=total_rows)
-        current_row += 2
+        for sheet_info in sheet_infos:
+            sheet_name = sheet_info.name
+            per_sheet_frequencies[sheet_name] = {}
+            
+            # Hole die Kategorie-Zuordnungen für dieses Sheet
+            sheet_row_count = len(sheet_info.data_rows)
+            sheet_assignments = category_assignments[result_idx:result_idx + sheet_row_count]
+            
+            # Zähle Kategorien für dieses Sheet
+            for categories in sheet_assignments:
+                for category in categories:
+                    if category:
+                        per_sheet_frequencies[sheet_name][category] = \
+                            per_sheet_frequencies[sheet_name].get(category, 0) + 1
+            
+            result_idx += sheet_row_count
         
-        # Keyword-Kategorie-Häufigkeiten
-        cell = stats_sheet.cell(row=current_row, column=1, value="Keyword-Kategorien")
-        cell.font = Font(bold=True)
+        # Invertiere Keyword-Mapping für Anzeige
+        keywords_per_category = {}
+        for keyword, category in keyword_to_category.items():
+            if category not in keywords_per_category:
+                keywords_per_category[category] = set()
+            keywords_per_category[category].add(keyword)
+        
+        # Für jedes Sheet eine Sektion erstellen
+        for sheet_name, frequencies in per_sheet_frequencies.items():
+            # Sheet-Überschrift
+            cell = stats_sheet.cell(row=current_row, column=1, value=f"Sheet: {sheet_name}")
+            cell.font = Font(bold=True, size=12)
+            current_row += 1
+            
+            # Header
+            for col_idx, header in enumerate(["Kategorie", "Häufigkeit", "Keywords"], start=1):
+                cell = stats_sheet.cell(row=current_row, column=col_idx, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = header_alignment
+            current_row += 1
+            
+            # Sortiere Kategorien nach Häufigkeit (absteigend)
+            sorted_categories = sorted(frequencies.items(), key=lambda x: x[1], reverse=True)
+            
+            # Schreibe Daten
+            for category, frequency in sorted_categories:
+                stats_sheet.cell(row=current_row, column=1, value=category)
+                stats_sheet.cell(row=current_row, column=2, value=frequency)
+                
+                # Keywords kommagetrennt
+                if category in keywords_per_category:
+                    keywords_str = ", ".join(sorted(keywords_per_category[category]))
+                    stats_sheet.cell(row=current_row, column=3, value=keywords_str)
+                
+                current_row += 1
+            
+            # Leerzeile nach jedem Sheet
+            current_row += 1
+        
+        # "Zusammen" Sektion
+        cell = stats_sheet.cell(row=current_row, column=1, value="Zusammen")
+        cell.font = Font(bold=True, size=12)
         current_row += 1
         
         # Header
@@ -194,23 +245,23 @@ class ExcelWriter:
             cell.alignment = header_alignment
         current_row += 1
         
-        # Zähle Kategorie-Häufigkeiten
-        category_frequencies = {}
+        # Zähle Gesamt-Kategorie-Häufigkeiten
+        total_frequencies = {}
         for categories in category_assignments:
             for category in categories:
                 if category:
-                    category_frequencies[category] = category_frequencies.get(category, 0) + 1
+                    total_frequencies[category] = total_frequencies.get(category, 0) + 1
         
         # Sortiere nach Häufigkeit
-        sorted_categories = sorted(category_frequencies.items(), key=lambda x: x[1], reverse=True)
+        sorted_total = sorted(total_frequencies.items(), key=lambda x: x[1], reverse=True)
         
-        # Schreibe Kategorie-Daten
-        for category, frequency in sorted_categories:
+        # Schreibe Gesamt-Daten
+        for category, frequency in sorted_total:
             stats_sheet.cell(row=current_row, column=1, value=category)
             stats_sheet.cell(row=current_row, column=2, value=frequency)
             
-            if category in category_mapping:
-                keywords_str = ", ".join(sorted(category_mapping[category]))
+            if category in keywords_per_category:
+                keywords_str = ", ".join(sorted(keywords_per_category[category]))
                 stats_sheet.cell(row=current_row, column=3, value=keywords_str)
             
             current_row += 1
@@ -281,7 +332,7 @@ class ExcelWriter:
     def create_pdf_results_workbook(self,
                                     merged_results: List,  # List[MergedResult]
                                     check_attributes: List[CheckAttribute],
-                                    category_mapping: Dict[str, List[str]],
+                                    keyword_to_category: Dict[str, str],
                                     output_path: Path,
                                     include_reasoning: bool = True) -> None:
         """
@@ -290,7 +341,7 @@ class ExcelWriter:
         Args:
             merged_results: Liste von MergedResult-Objekten
             check_attributes: Prüfmerkmale
-            category_mapping: Kategorie-Keyword-Mapping
+            keyword_to_category: Keyword-Kategorie-Mapping
             output_path: Pfad für die neue Datei
             include_reasoning: Ob Begründungsspalten hinzugefügt werden sollen
         """
@@ -449,13 +500,20 @@ class ExcelWriter:
         # Sortiere nach Häufigkeit
         sorted_categories = sorted(category_frequencies.items(), key=lambda x: x[1], reverse=True)
         
+        # Invertiere Keyword-Mapping für Anzeige
+        keywords_per_category = {}
+        for keyword, category in keyword_to_category.items():
+            if category not in keywords_per_category:
+                keywords_per_category[category] = set()
+            keywords_per_category[category].add(keyword)
+        
         # Schreibe Kategorie-Daten
         for category, frequency in sorted_categories:
             stats_sheet.cell(row=current_row, column=1, value=category)
             stats_sheet.cell(row=current_row, column=2, value=frequency)
             
-            if category in category_mapping:
-                keywords_str = ", ".join(sorted(category_mapping[category]))
+            if category in keywords_per_category:
+                keywords_str = ", ".join(sorted(keywords_per_category[category]))
                 stats_sheet.cell(row=current_row, column=3, value=keywords_str)
             
             current_row += 1
