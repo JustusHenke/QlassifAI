@@ -189,9 +189,11 @@ Alle Dateien werden flach in ein Ausgabeverzeichnis gespeichert:
 
 ```
 {InputDateiName}_analyzed/
-├── {name}_analyzed_YYYYMMDD.xlsx      # Hauptergebnisse
-├── {name}_statistics_YYYYMMDD.xlsx    # Statistiken
-├── {name}_intercoder_YYYYMMDD.xlsx    # Intercoder-Vergleich (bei multi_coder)
+├── {name}_analyzed_YYYYMMDD.xlsx      # Alles in einer Datei:
+│   ├── {SheetName}                    #   Analysedaten (pro Sheet)
+│   ├── Statistiken                    #   Kategorie-Haeufigkeiten
+│   ├── Intercoder                     #   Kodierervergleich (bei multi_coder)
+│   └── Kappa-Statistik                #   Kappa-Werte (bei multi_coder)
 ├── methodology.md                     # Methodenprotokoll (bei scientific)
 ├── codebook.json                      # Maschinenlesbarer Codeplan (bei scientific)
 ├── frequency_tables.csv               # Fuer R/SPSS (bei scientific)

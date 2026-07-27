@@ -361,9 +361,8 @@ class ExcelWriter:
                                    category_assignments, check_attributes, 
                                    keywords_per_category, has_confidence)
         
-        new_workbook.save(output_path)
-        logger.info(f"Neue Workbook mit Statistiken erstellt: {output_path}")
-        print(f"\n✓ Neue Excel-Datei mit Statistiken erstellt: {output_path}")
+        return new_workbook
+        # logger.info(f"Neue Workbook mit Statistiken erstellt: {output_path}")
     
     def _add_statistics_sheet(self, workbook: Workbook, sheet_infos: List[SheetInfo],
                                all_results: List, category_assignments: List[List[str]],

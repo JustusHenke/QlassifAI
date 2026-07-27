@@ -459,16 +459,14 @@ def main():
                 include_confidence=has_science
             )
 
-            # Intercoder-Sheet (optional)
+            # Intercoder-Sheets (optional) - direkt ins gleiche Workbook
             if has_multi_coder and intercoder_results:
-                intercoder_path = output_manager.get_intercoder_path()
-                from openpyxl import Workbook as OpenpyxlWorkbook
-                wb_ic = OpenpyxlWorkbook()
-                wb_ic.remove(wb_ic.active)
-                excel_writer.create_intercoder_sheet(wb_ic, intercoder_results[0], config.check_attributes)
-                excel_writer.create_kappa_sheet(wb_ic, intercoder_results[0])
-                wb_ic.save(intercoder_path)
-                print(f"  Intercoder-Datei: {intercoder_path}")
+                excel_writer.create_intercoder_sheet(workbook, intercoder_results[0], config.check_attributes)
+                excel_writer.create_kappa_sheet(workbook, intercoder_results[0])
+
+            # Einmal alles speichern
+            workbook.save(output_file)
+            print(f"  Ergebnisse: {output_file}")
 
             # Reproduzierbarkeit (optional)
             if has_science:

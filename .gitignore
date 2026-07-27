@@ -54,11 +54,12 @@ htmlcov/
 *_statistics.xlsx
 *_analyzed_*.xlsx
 *_statistics_*.xlsx
+*_analyzed/
 
 Beispielantworten*
 QlassifAI_config.json
 
-Dokumente U*
+Dokumente*
 
 # Config files (optional - user may want to track these)
 # config.json

@@ -9,6 +9,12 @@ und dieses Projekt haelt sich an [Semantic Versioning](https://semver.org/lang/d
 
 Keine Aenderungen seit dem letzten Release.
 
+## [2.0.2] - 2025-07-27
+
+### Geaendert
+- Alle Ausgaben (Analysedaten, Statistiken, Intercoder, Kappa) in EINER Excel-Datei statt separater Dateien
+- Output-Struktur vereinfacht: Nur noch `{name}_analyzed_YYYYMMDD.xlsx` + reproducibility-Dateien
+
 ## [2.0.1] - 2025-07-27
 
 ### Geaendert

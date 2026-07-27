@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Optional
 from logging_config import get_logger
 
 logger = get_logger("output_manager")
@@ -35,17 +35,9 @@ class OutputManager:
         
         logger.info(f"Output-Verzeichnis erstellt: {self.output_dir}")
     
-    def get_analyzed_path(self, suffix: str = "analyzed") -> Path:
-        """Gibt Pfad fuer Analysedatei zurueck"""
-        return self.output_dir / f"{self.input_name}_{suffix}_{self.timestamp}.xlsx"
-    
-    def get_intercoder_path(self) -> Path:
-        """Gibt Pfad fuer Intercoder-Datei zurueck"""
-        return self.output_dir / f"{self.input_name}_intercoder_{self.timestamp}.xlsx"
-    
-    def get_statistics_path(self) -> Path:
-        """Gibt Pfad fuer Statistik-Datei zurueck"""
-        return self.output_dir / f"{self.input_name}_statistics_{self.timestamp}.xlsx"
+    def get_analyzed_path(self) -> Path:
+        """Gibt Pfad fuer die Ergebnis-Excel-Datei zurueck (alle Sheets in einer Datei)"""
+        return self.output_dir / f"{self.input_name}_analyzed_{self.timestamp}.xlsx"
     
     def get_methodology_path(self) -> Path:
         """Gibt Pfad fuer methodology.md zurueck"""
@@ -62,7 +54,3 @@ class OutputManager:
     def get_audit_trail_path(self) -> Path:
         """Gibt Pfad fuer Audit Trail zurueck"""
         return self.output_dir / f"audit_trail_{self.timestamp}.json"
-    
-    def print_summary(self) -> None:
-        """Druckt eine Zusammenfassung der Ausgabestruktur"""
-        print(f"\n  Output-Verzeichnis: {self.output_dir}")
