@@ -3,7 +3,7 @@
   "provider": "openrouter",
   "model": "google/gemini-2.0-flash-001",
   "text_column_name": "Textantwort",
-  "research_question": "Wie bewerten Studierende die Unterstützungsangebote im ersten Semester?",
+  "research_question": "Die Befragung richtet sich an Studierende im ersten Semester und erfasst deren Erfahrungen mit den verschiedenen Unterstützungsangeboten der Hochschule.",
   "include_reasoning": true,
   "scientific": {
     "multi_coder": false,
@@ -15,36 +15,70 @@
   },
   "check_attributes": [
     {
-      "question": "Wird über Wettbewerb gesprochen?",
-      "answer_type": "boolean",
-      "definition": "Wettbewerb bedeutet Vergleich mit anderen Anbietern, Konkurrenten oder Alternativen. Erwähnungen von Marktposition oder Vergleichen zählen dazu."
-    },
-    {
-      "question": "Welche Produktkategorie wird erwähnt?",
+      "question": "Wird ein konkretes Unterstützungsangebot genannt?",
       "answer_type": "categorical",
       "categories": [
-        "Hardware",
-        "Software",
-        "Service",
-        "Keine"
+        "Orientierungswoche",
+        "Mentoring",
+        "Tutorien",
+        "Bibliothek",
+        "Schreibwerkstatt",
+        "Psychologische Beratung",
+        "Studienfinanzierung",
+        "International Office",
+        "Fachschaft",
+        "Studierendensekretariat",
+        "IT-Support",
+        "Sportangebot",
+        "Zeitmanagement",
+        "Sonstiges"
       ],
-      "definition": "Hardware = physische Geräte; Software = Programme/Apps; Service = Dienstleistungen/Support; Keine = wenn nichts davon zutrifft"
+      "definition": "Welches konkrete Unterstützungsangebot wird im Text erwähnt? Bei mehreren Angeboten das relevanteste wählen."
     },
     {
-      "question": "Welche Themen werden angesprochen?",
+      "question": "Wird eine Verbesserung gewünscht?",
+      "answer_type": "boolean",
+      "definition": "Äußert die Person explizit oder implizit einen Wunsch nach Veränderung, Erweiterung oder Verbesserung des Angebots oder der Kommunikation darüber."
+    },
+    {
+      "question": "In welchem Themenfeld bewegt sich das Feedback?",
       "answer_type": "multi_categorical",
       "categories": [
-        "Preis",
-        "Qualität",
-        "Support",
-        "Innovation"
+        "Studieneinstieg",
+        "Lernen & Lehre",
+        "Beratung & Unterstützung",
+        "Soziale Integration",
+        "Verwaltung & Organisation",
+        "Infrastruktur"
       ],
-      "definition": "Mehrere Themen können gleichzeitig im Text vorkommen. Alle zutreffenden Kategorien werden erfasst."
+      "definition": "Übergeordnete Themenfelder. Mehrfachnennungen möglich."
     },
     {
-      "question": "Ist die Aussage zukunftsorientiert?",
+      "question": "Wie wird das Angebot bewertet?",
+      "answer_type": "categorical",
+      "categories": [
+        "Positiv",
+        "Negativ",
+        "Gemischt",
+        "Neutral"
+      ],
+      "definition": "Gesamtbewertung basierend auf Wortwahl und Ton."
+    },
+    {
+      "question": "Wird die Hochschule konkret namentlich erwähnt?",
       "answer_type": "boolean",
-      "definition": "Zukunftsorientiert bedeutet Bezug auf zukünftige Entwicklungen, Pläne, Erwartungen oder Prognosen. Vergangenheit oder Gegenwart zählen nicht."
+      "definition": "Nennt die Person die konkrete Hochschule oder eine Einrichtung mit eigenem Namen (z.B. 'Uni XY', 'FH Z')."
+    },
+    {
+      "question": "In welchem Zeitbezug steht das Feedback?",
+      "answer_type": "categorical",
+      "categories": [
+        "Vergangenheit",
+        "Gegenwart",
+        "Zukunft",
+        "Zeitlos"
+      ],
+      "definition": "Bezieht sich das Feedback auf vergangene Erfahrungen, gegenwärtige Situation, zukünftige Wünsche oder ist zeitlich neutral."
     }
   ]
 }

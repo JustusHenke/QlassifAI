@@ -1,4 +1,4 @@
-"""Unit Tests für ReproducibilityManager"""
+"""Unit Tests fuer ReproducibilityManager"""
 
 import sys
 from pathlib import Path
@@ -11,7 +11,7 @@ import json
 
 
 class TestReproducibilityManager:
-    """Tests für ReproducibilityManager"""
+    """Tests fuer ReproducibilityManager"""
     
     def test_initialization(self):
         """ReproducibilityManager wird korrekt initialisiert"""
@@ -19,7 +19,7 @@ class TestReproducibilityManager:
             rm = ReproducibilityManager(Path(tmpdir))
             
             assert rm.output_dir.exists()
-            assert (rm.output_dir / "audit_trail").exists()
+            assert rm.output_dir == Path(tmpdir)
     
     def test_hash_content(self):
         """SHA256-Hash wird korrekt berechnet"""
@@ -29,7 +29,7 @@ class TestReproducibilityManager:
         
         assert hash1 == hash2
         assert hash1 != hash3
-        assert len(hash1) == 64  # SHA256 Hex Länge
+        assert len(hash1) == 64
     
     def test_record_analysis(self):
         """Analyse wird im Audit Trail aufgezeichnet"""
@@ -55,7 +55,7 @@ class TestReproducibilityManager:
             rm = ReproducibilityManager(Path(tmpdir))
             rm.record_analysis("gpt-4o-mini", "openai", "prompt", "response")
             
-            filepath = rm.save_audit_trail()
+            filepath = rm.save_audit_trail(Path(tmpdir) / "audit.json")
             
             assert filepath.exists()
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -82,7 +82,7 @@ class TestReproducibilityManager:
                 total_tokens=50000
             )
             
-            filepath = rm.generate_methodology(metadata)
+            filepath = rm.generate_methodology(Path(tmpdir) / "methodology.md", metadata)
             
             assert filepath.exists()
             content = filepath.read_text(encoding='utf-8')
@@ -100,7 +100,7 @@ class TestReproducibilityManager:
                 {"question": "Kategorie?", "answer_type": "categorical", "categories": ["A", "B"]}
             ]
             
-            filepath = rm.export_codebook(check_attrs)
+            filepath = rm.export_codebook(Path(tmpdir) / "codebook.json", check_attrs)
             
             assert filepath.exists()
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -122,7 +122,7 @@ class TestReproducibilityManager:
                 {"question": "Q2?", "answer_type": "categorical", "categories": ["A", "B"]}
             ]
             
-            filepath = rm.export_frequency_tables(results, check_attrs)
+            filepath = rm.export_frequency_tables(Path(tmpdir) / "freq.csv", results, check_attrs)
             
             assert filepath.exists()
             content = filepath.read_text(encoding='utf-8')
@@ -141,6 +141,7 @@ class TestReproducibilityManager:
             )
             
             output = rm.save_all(
+                Path(tmpdir),
                 metadata,
                 [{"question": "Q1?", "answer_type": "boolean"}],
                 [{"custom_checks": {"Q1?": True}}]
@@ -154,7 +155,7 @@ class TestReproducibilityManager:
 
 
 def run_tests():
-    """Führt alle Tests aus"""
+    """Fuehrt alle Tests aus"""
     test = TestReproducibilityManager()
     tests = [
         test.test_initialization,

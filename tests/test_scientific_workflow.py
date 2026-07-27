@@ -128,7 +128,7 @@ class TestScientificWorkflow:
                     kappa_results[question].append(1.0 if ic.agreements[question] else 0.0)
             
             # 6. Output erstellen
-            output_manager = OutputManager(tmpdir)
+            output_manager = OutputManager(tmpdir, 'test_output')
             
             # Excel Writer
             from openpyxl import Workbook
@@ -139,11 +139,11 @@ class TestScientificWorkflow:
             ew.create_intercoder_sheet(wb, intercoder_results[0], [attr, attr2])
             ew.create_kappa_sheet(wb, intercoder_results[0])
             
-            excel_path = output_manager.get_analyzed_path("test")
+            excel_path = output_manager.get_analyzed_path()
             wb.save(excel_path)
             
             # 7. Reproduzierbarkeit
-            rm = ReproducibilityManager(output_manager.dirs["reproducibility"])
+            rm = ReproducibilityManager(output_manager.output_dir)
             
             metadata = MethodologyMetadata(
                 model=config.model,
@@ -171,6 +171,7 @@ class TestScientificWorkflow:
             ]
             
             output_files = rm.save_all(
+                output_manager.output_dir,
                 metadata,
                 [{"question": a.question, "answer_type": a.answer_type,
                   "categories": a.categories or [], "definition": a.definition or ""}
@@ -294,6 +295,7 @@ class TestScientificWorkflow:
             )
             
             output = rm.save_all(
+                tmpdir,
                 metadata,
                 [{"question": "Q1?", "answer_type": "boolean"}]
             )

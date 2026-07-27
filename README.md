@@ -34,42 +34,20 @@ pip install -r requirements.txt
 
 ## Provider
 
-Qlassif-AI unterstuetzt **6 LLM-Provider** fuer maximale Flexibilitaet:
+Qlassif-AI unterstuetzt **6 LLM-Provider**:
 
-### Cloud-Provider
-
-| Provider | API-Key | Modellbeispiele | Kosten |
-|----------|---------|-----------------|--------|
-| **OpenRouter** (Standard) | `OPENROUTER_API_KEY` | `google/gemini-2.0-flash-001`, `anthropic/claude-3.5-sonnet` | Variabel |
-| **OpenAI** | `OPENAI_API_KEY` | `gpt-4o-mini`, `gpt-4o`, `gpt-3.5-turbo` | Variabel |
-| **Anthropic** | `ANTHROPIC_API_KEY` | `claude-3-5-sonnet-20241022`, `claude-3-haiku-20240307` | Variabel |
-| **Mistral** | `MISTRAL_API_KEY` | `mistral-large-latest`, `mistral-small-latest` | Variabel |
-
-### Lokale Provider
-
-| Provider | API-Key | Modellbeispiele | Kosten |
-|----------|---------|-----------------|--------|
-| **Ollama** | Keiner noetig | `llama3.1:8b`, `mistral:7b`, `phi3` | Kostenlos |
-| **LMStudio** | Keiner noetig | Beliebige lokal geladene Modelle | Kostenlos |
-
-### Provider-Übersicht
-
-| Provider | Provider-Wert | Base URL | Authentifizierung |
-|----------|---------------|----------|-------------------|
-| OpenRouter | `openrouter` | `https://openrouter.ai/api/v1` | API-Key |
-| OpenAI | `openai` | `https://api.openai.com/v1` | API-Key |
-| Anthropic | `anthropic` | Anthropic SDK | API-Key |
-| Mistral | `mistral` | Mistral SDK | API-Key |
-| Ollama | `ollama` | `http://localhost:11434/v1` | Keine |
-| LMStudio | `lmstudio` | `http://localhost:1234/v1` | Keine |
-
-## Konfiguration
+| Provider | Typ | API-Key | Modellbeispiele |
+|----------|-----|---------|-----------------|
+| **OpenRouter** (Standard) | Cloud | `OPENROUTER_API_KEY` | `google/gemini-2.0-flash-001` |
+| **OpenAI** | Cloud | `OPENAI_API_KEY` | `gpt-4o-mini`, `gpt-4o` |
+| **Anthropic** | Cloud | `ANTHROPIC_API_KEY` | `claude-3-5-sonnet-20241022` |
+| **Mistral** | Cloud | `MISTRAL_API_KEY` | `mistral-large-latest` |
+| **Ollama** | Lokal | Keine | `llama3.1:8b`, `mistral:7b` |
+| **LMStudio** | Lokal | Keine | Beliebige Modelle |
 
 ### API-Key einrichten
 
 **Option 1: .env-Datei (empfohlen)**
-
-Erstellen Sie eine `.env`-Datei im Projektverzeichnis:
 
 ```env
 # OpenRouter (Standard)
@@ -98,12 +76,23 @@ export OPENROUTER_API_KEY=your-api-key-here
 **Option 3: Lokale Modelle (kein API-Key noetig)**
 
 ```bash
-# Ollama starten
+# Ollama starten und Modell laden
 ollama serve
 ollama pull llama3.1:8b
 
 # Oder LMStudio starten und Modell laden
 ```
+
+### Provider-Konfiguration
+
+```json
+{
+  "provider": "openrouter",
+  "model": "google/gemini-2.0-flash-001"
+}
+```
+
+## Konfiguration
 
 ### Config-Datei (QlassifAI_config.json)
 
@@ -145,21 +134,23 @@ ollama pull llama3.1:8b
 
 ### Modell-Empfehlungen
 
-**Fuer beste Ergebnisse:**
+**Cloud:**
 - `openrouter`: `google/gemini-2.0-flash-001` (schnell, guenstig)
 - `openai`: `gpt-4o-mini` (ausgewogen)
 - `anthropic`: `claude-3-5-sonnet-20241022` (hohe Qualitaet)
 
-**Fuer lokale Nutzung:**
-- `ollama`: `llama3.1:8b` (empfohlen), `mistral:7b`
+**Lokal:**
+- `ollama`: `llama3.1:8b` (empfohlen)
 - `lmstudio`: Beliebiges quantisiertes Modell
 
-**Fuer Multi-Coder (Intercoder-Reliabilitaet):**
+**Multi-Coder (Intercoder-Reliabilitaet):**
 ```json
 {
   "scientific": {
     "multi_coder": true,
-    "coder_models": ["openrouter/openai/gpt-4o-mini", "openrouter/anthropic/claude-3.5-sonnet"]
+    "coder_models": ["gpt-4o-mini", "gpt-4o"],
+    "primary_coder": "highest_confidence",
+    "confidence_threshold": 70
   }
 }
 ```
@@ -183,32 +174,50 @@ python main.py
 2. Excel-Datei auswaehlen
 3. Config laden oder erstellen
 4. Verarbeitung abwarten
-5. Ergebnisse in `*_analyzed.xlsx`
+5. Ergebnisse in `{InputDatei}_analyzed/`
 
 ### PDF-Modus
 
 1. Verzeichnis mit PDFs waehlen
 2. Config laden oder erstellen
 3. Verarbeitung abwarten
-4. Ergebnisse in `*_analyzed.xlsx`
+4. Ergebnisse in `{Verzeichnisname}_analyzed/`
 
 ## Ausgabe
 
-### Excel-Modus
+Alle Dateien werden flach in ein Ausgabeverzeichnis gespeichert:
 
-- `*_analyzed.xlsx` - Originaldaten + Analyseergebnisse
-- `*_statistics.xlsx` - Statistiken pro Sheet und gesamt
+```
+{InputDateiName}_analyzed/
+├── {name}_analyzed_YYYYMMDD.xlsx      # Hauptergebnisse
+├── {name}_statistics_YYYYMMDD.xlsx    # Statistiken
+├── {name}_intercoder_YYYYMMDD.xlsx    # Intercoder-Vergleich (bei multi_coder)
+├── methodology.md                     # Methodenprotokoll (bei scientific)
+├── codebook.json                      # Maschinenlesbarer Codeplan (bei scientific)
+├── frequency_tables.csv               # Fuer R/SPSS (bei scientific)
+└── audit_trail_YYYYMMDD.json          # Audit Trail (bei scientific)
+```
 
-### Scientific Mode (optional)
+## Scientific Mode (optional)
 
-Wenn `scientific` in der Config aktiviert ist:
+Wissenschaftliche Parameter fuer methodische Robustheit:
 
-- `analyzed/` - Analysedateien
-- `reproducibility/methodology.md` - Methodenprotokoll
-- `reproducibility/codebook.json` - Maschinenlesbarer Codeplan
-- `reproducibility/frequency_tables.csv` - Fuer R/SPSS
-- `audit_trail/` - Audit Trail JSONs
-- `intercoder/` - Intercoder-Vergleich (bei multi_coder)
+```json
+{
+  "scientific": {
+    "multi_coder": true,
+    "coder_models": ["gpt-4o-mini", "gpt-4o"],
+    "primary_coder": "highest_confidence",
+    "confidence_threshold": 70,
+    "seed": 42
+  }
+}
+```
+
+**Features:**
+- **Confidence Scores**: Konfidenz pro Klassifikation (0-100%)
+- **Multi-Model-Intercoder**: Kodierervergleich mit Kappa-Berechnung
+- **Reproduzierbarkeit**: methodology.md, codebook.json, Audit Trail
 
 ## Fehlerbehandlung
 
@@ -220,9 +229,17 @@ Wenn `scientific` in der Config aktiviert ist:
 | `anthropic nicht installiert` | `pip install anthropic` ausfuehren |
 | `mistralai nicht installiert` | `pip install mistralai` ausfuehren |
 
-## Logging
+## Tests
 
-Alle Aktivitaeten werden in `qlassif-ai.log` protokolliert.
+```bash
+# Alle Tests ausfuehren
+python tests/test_confidence_engine.py
+python tests/test_kappa_calculator.py
+python tests/test_multi_coder.py
+python tests/test_reproducibility.py
+python tests/test_config_backwards_compat.py
+python tests/test_scientific_workflow.py
+```
 
 ## Lizenz
 

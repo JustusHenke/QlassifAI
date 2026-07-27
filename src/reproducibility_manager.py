@@ -1,4 +1,4 @@
-"""Reproducibility Manager für wissenschaftliche Reproduzierbarkeit"""
+"""Reproducibility Manager fuer wissenschaftliche Reproduzierbarkeit"""
 
 import json
 import hashlib
@@ -14,7 +14,7 @@ logger = get_logger("reproducibility_manager")
 
 @dataclass
 class AuditEntry:
-    """Einzelner Audit-Eintrag für Reproduzierbarkeit"""
+    """Einzelner Audit-Eintrag fuer Reproduzierbarkeit"""
     timestamp: str
     model: str
     provider: str
@@ -32,7 +32,7 @@ class AuditEntry:
 
 @dataclass
 class MethodologyMetadata:
-    """Metadaten für das Methodenprotokoll"""
+    """Metadaten fuer das Methodenprotokoll"""
     project_name: str = "Qlassif-AI"
     version: str = "2.0"
     analysis_date: str = ""
@@ -53,13 +53,9 @@ class MethodologyMetadata:
 
 class ReproducibilityManager:
     """
-    Verwaltet Reproduzierbarkeit und Audit Trail für wissenschaftliche Analysen.
+    Verwaltet Reproduzierbarkeit und Audit Trail fuer wissenschaftliche Analysen.
     
-    Features:
-    - Generierung von methodology.md
-    - Export von codebook.json
-    - Export von frequency_tables.csv
-    - Audit Trail Speicherung
+    Speichert alle Dateien flach in das angegebene Ausgabeverzeichnis.
     """
     
     def __init__(self, output_dir: Path):
@@ -67,53 +63,26 @@ class ReproducibilityManager:
         Initialisiert ReproducibilityManager.
         
         Args:
-            output_dir: Ausgabeverzeichnis für alle Dateien
+            output_dir: Ausgabeverzeichnis (flach, keine Unterordner)
         """
         self.output_dir = Path(output_dir)
         self.audit_entries: List[AuditEntry] = []
-        self._ensure_output_dir()
-    
-    def _ensure_output_dir(self) -> None:
-        """Erstellt Ausgabeverzeichnisse falls nötig"""
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        (self.output_dir / "audit_trail").mkdir(exist_ok=True)
     
     @staticmethod
     def hash_content(content: str) -> str:
-        """Erstellt SHA256-Hash für Inhalt"""
+        """Erstellt SHA256-Hash fuer Inhalt"""
         return hashlib.sha256(content.encode('utf-8')).hexdigest()
     
-    @staticmethod
-    def hash_file(filepath: Path) -> str:
-        """Erstellt SHA256-Hash für Datei"""
-        if not filepath.exists():
-            return ""
-        with open(filepath, 'rb') as f:
-            return hashlib.sha256(f.read()).hexdigest()
-    
     def add_audit_entry(self, entry: AuditEntry) -> None:
-        """Fügt einen Audit-Eintrag hinzu"""
+        """Fuegt einen Audit-Eintrag hinzu"""
         self.audit_entries.append(entry)
-        logger.info(f"Audit-Eintrag hinzugefügt: {entry.timestamp}")
+        logger.info(f"Audit-Eintrag hinzugefuegt: {entry.timestamp}")
     
     def record_analysis(self, model: str, provider: str, prompt: str, 
                         response: str, seed: Optional[int] = None,
                         input_text: str = "", temperature: float = 0.3) -> AuditEntry:
-        """
-        Zeichnet eine Analyse-Einheit im Audit Trail auf.
-        
-        Args:
-            model: Verwendetes Modell
-            provider: Provider (openai, openrouter)
-            prompt: Gesendeter Prompt
-            response: Erhaltene Antwort
-            seed: Optionaler Seed
-            input_text: Eingabetext
-            temperature: Temperatur-Parameter
-            
-        Returns:
-            Erstellter AuditEntry
-        """
+        """Zeichnet eine Analyse-Einheit im Audit Trail auf."""
         entry = AuditEntry(
             timestamp=datetime.now().isoformat(),
             model=model,
@@ -125,20 +94,16 @@ class ReproducibilityManager:
             input_text_hash=self.hash_content(input_text),
             result_summary=response[:200] if response else ""
         )
-        
         self.add_audit_entry(entry)
         return entry
     
-    def save_audit_trail(self) -> Path:
+    def save_audit_trail(self, filepath: Path) -> Path:
         """
         Speichert den Audit Trail als JSON-Datei.
         
-        Returns:
-            Pfad zur Audit-Trail-Datei
+        Args:
+            filepath: Vollstaendiger Pfad zur Audit-Trail-Datei
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filepath = self.output_dir / "audit_trail" / f"audit_{timestamp}.json"
-        
         data = {
             "metadata": {
                 "generated_at": datetime.now().isoformat(),
@@ -166,21 +131,11 @@ class ReproducibilityManager:
         logger.info(f"Audit Trail gespeichert: {filepath}")
         return filepath
     
-    def generate_methodology(self, metadata: MethodologyMetadata) -> Path:
-        """
-        Generiert eine methodology.md Datei.
-        
-        Args:
-            metadata: Methoden-Metadaten
-            
-        Returns:
-            Pfad zur methodology.md
-        """
-        filepath = self.output_dir / "methodology.md"
-        
+    def generate_methodology(self, filepath: Path, metadata: MethodologyMetadata) -> Path:
+        """Generiert eine methodology.md Datei."""
         content = f"""# Methodenprotokoll: {metadata.project_name}
 
-## Überblick
+## Ueberblick
 
 | Feld | Wert |
 |------|------|
@@ -196,9 +151,9 @@ class ReproducibilityManager:
 
 {metadata.research_question if metadata.research_question else "Keine Untersuchungsfrage definiert."}
 
-## Prüfmerkmale
+## Pruefmerkmale
 
-| # | Prüfmerkmal | Antworttyp | Kategorien |
+| # | Pruefmerkmal | Antworttyp | Kategorien |
 |---|-------------|------------|------------|
 """
         
@@ -233,7 +188,7 @@ class ReproducibilityManager:
 
 ## Reproduzierbarkeit
 
-- Alle Prompt-Templates sind in den audit_trail/ JSON-Dateien gespeichert
+- Alle Prompt-Templates sind in der audit_trail-Datei gespeichert
 - API-Responses werden mit SHA256-Hashes referenziert
 - Modell-Parameter und Seed sind dokumentiert
 
@@ -247,18 +202,8 @@ Erstellt am {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} von {metadata.project
         logger.info(f"Methodology generiert: {filepath}")
         return filepath
     
-    def export_codebook(self, check_attributes: List[Dict[str, Any]]) -> Path:
-        """
-        Exportiert Prüfmerkmale als maschinenlesbares codebook.json.
-        
-        Args:
-            check_attributes: Liste der Prüfmerkmale
-            
-        Returns:
-            Pfad zum codebook.json
-        """
-        filepath = self.output_dir / "codebook.json"
-        
+    def export_codebook(self, filepath: Path, check_attributes: List[Dict[str, Any]]) -> Path:
+        """Exportiert Pruefmerkmale als maschinenlesbares codebook.json."""
         codebook = {
             "version": "2.0",
             "generated_at": datetime.now().isoformat(),
@@ -272,10 +217,8 @@ Erstellt am {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} von {metadata.project
                 "answer_type": attr.get("answer_type", ""),
                 "definition": attr.get("definition", ""),
             }
-            
             if attr.get("categories"):
                 entry["categories"] = attr["categories"]
-            
             codebook["check_attributes"].append(entry)
         
         with open(filepath, 'w', encoding='utf-8') as f:
@@ -284,23 +227,10 @@ Erstellt am {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} von {metadata.project
         logger.info(f"Codebook exportiert: {filepath}")
         return filepath
     
-    def export_frequency_tables(self, results: List[Dict[str, Any]], 
+    def export_frequency_tables(self, filepath: Path, results: List[Dict[str, Any]], 
                                  check_attributes: List[Dict[str, Any]]) -> Path:
-        """
-        Exportiert Frequenztabelle als CSV für R/SPSS-Import.
-        
-        Args:
-            results: Analyseergebnisse
-            check_attributes: Prüfmerkmale
-            
-        Returns:
-            Pfad zur CSV-Datei
-        """
-        filepath = self.output_dir / "frequency_tables.csv"
-        
-        # Header: Prüfmerkmal, Wert, Häufigkeit, Prozent
-        header = ["Prüfmerkmal", "Wert", "Häufigkeit", "Prozent"]
-        
+        """Exportiert Frequenztabelle als CSV fuer R/SPSS-Import."""
+        header = ["Pruefmerkmal", "Wert", "Haeufigkeit", "Prozent"]
         rows = [header]
         total = len(results)
         
@@ -312,27 +242,22 @@ Erstellt am {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} von {metadata.project
             for result in results:
                 value = result.get("custom_checks", {}).get(question)
                 if value is not None:
-                    # Formatiere Wert
                     if answer_type == "boolean":
                         display_value = "Ja" if value else "Nein"
+                        value_counts[display_value] = value_counts.get(display_value, 0) + 1
                     elif answer_type == "multi_categorical" and isinstance(value, list):
                         for v in value:
                             display_value = str(v)
                             value_counts[display_value] = value_counts.get(display_value, 0) + 1
-                        continue
                     else:
                         display_value = str(value)
-                    
-                    value_counts[display_value] = value_counts.get(display_value, 0) + 1
+                        value_counts[display_value] = value_counts.get(display_value, 0) + 1
             
-            # Sortiere nach Häufigkeit
             sorted_values = sorted(value_counts.items(), key=lambda x: x[1], reverse=True)
-            
             for value, count in sorted_values:
                 percent = (count / total * 100) if total > 0 else 0
                 rows.append([question, value, count, f"{percent:.1f}"])
         
-        # Schreibe CSV
         with open(filepath, 'w', encoding='utf-8', newline='') as f:
             writer = csv.writer(f)
             writer.writerows(rows)
@@ -340,34 +265,33 @@ Erstellt am {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} von {metadata.project
         logger.info(f"Frequenztabelle exportiert: {filepath}")
         return filepath
     
-    def save_all(self, metadata: MethodologyMetadata, 
+    def save_all(self, output_dir: Path,
+                 metadata: MethodologyMetadata, 
                  check_attributes: List[Dict[str, Any]],
                  results: List[Dict[str, Any]] = None) -> Dict[str, Path]:
         """
-        Speichert alle Reproduzierbarkeitsdateien.
+        Speichert alle Reproduzierbarkeitsdateien in ein flaches Verzeichnis.
         
-        Args:
-            metadata: Methoden-Metadaten
-            check_attributes: Prüfmerkmale
-            results: Optional, Analyseergebnisse für Frequenztabelle
-            
         Returns:
             Dict mit Dateinamen -> Pfad
         """
         output_files = {}
         
-        # Methodology
-        output_files["methodology"] = self.generate_methodology(metadata)
+        output_files["methodology"] = self.generate_methodology(
+            output_dir / "methodology.md", metadata
+        )
+        output_files["codebook"] = self.export_codebook(
+            output_dir / "codebook.json", check_attributes
+        )
         
-        # Codebook
-        output_files["codebook"] = self.export_codebook(check_attributes)
-        
-        # Frequenztabelle (nur wenn Ergebnisse vorhanden)
         if results:
-            output_files["frequency_tables"] = self.export_frequency_tables(results, check_attributes)
+            output_files["frequency_tables"] = self.export_frequency_tables(
+                output_dir / "frequency_tables.csv", results, check_attributes
+            )
         
-        # Audit Trail
-        output_files["audit_trail"] = self.save_audit_trail()
+        output_files["audit_trail"] = self.save_audit_trail(
+            output_dir / f"audit_trail_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        )
         
         logger.info(f"Alle Reproduzierbarkeitsdateien gespeichert: {list(output_files.keys())}")
         return output_files

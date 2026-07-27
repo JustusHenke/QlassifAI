@@ -61,7 +61,7 @@ def _run_multi_coder_workflow(working_directory: Path, config, api_key: str,
     
     # Initialisiere OutputManager
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_manager = OutputManager(working_directory, timestamp)
+    output_manager = OutputManager(working_directory, 'results', timestamp)
     
     # Initialisiere MultiCoder
     multi_coder = MultiCoder(sc)
@@ -260,8 +260,8 @@ def main():
                 print("Erstelle Reproduzierbarkeitsdateien...")
                 print("=" * 60)
                 
-                output_manager = OutputManager(working_directory, timestamp)
-                rm = ReproducibilityManager(output_manager.dirs["reproducibility"])
+                output_manager = OutputManager(working_directory, dir_name, timestamp)
+                rm = ReproducibilityManager(output_manager.output_dir)
                 
                 metadata = MethodologyMetadata(
                     model=config.model,
@@ -339,70 +339,112 @@ def main():
                 print(f"  • {sheet_info.name}: {len(sheet_info.data_rows)} Zeilen")
             print("=" * 60)
         
-            # 6. LLM Analyzer
-            print("\n6. Initialisiere LLM Analyzer...")
+            # 6. Analysator initialisieren
+            print("\n6. Initialisiere Analysator...")
             print(f"   Provider: {config.provider}")
-            print(f"   Modell: {config.model}")
-            llm_analyzer = LLMAnalyzer(api_key=api_key, model=config.model, provider=config.provider)
-        
+            
+            all_results = []
+            stats = ProcessingStats()
+            intercoder_results = []
+            llm_analyzer = None
+            
+            if has_multi_coder:
+                # Multi-Coder: Primary Codierer liefert Hauptergebnisse
+                coder_models_str = ", ".join(config.scientific.coder_models)
+                print(f"   Modus: Multi-Coder ({coder_models_str})")
+                print(f"   Prim\u00e4rer Kodierer: {config.scientific.primary_coder}")
+                
+                multi_coder_inst = MultiCoder(config.scientific)
+                for model_name in config.scientific.coder_models:
+                    analyzer = LLMAnalyzer(api_key=api_key, model=model_name, provider=config.provider)
+                    multi_coder_inst.add_analyzer(model_name, analyzer)
+                
+                llm_analyzer = LLMAnalyzer(api_key=api_key, model=config.scientific.coder_models[0], provider=config.provider)
+            else:
+                print(f"   Modell: {config.model}")
+                llm_analyzer = LLMAnalyzer(api_key=api_key, model=config.model, provider=config.provider)
+
             # 7. Verarbeite alle Sheets
             print("\n7. Verarbeite Textantworten...")
             print("=" * 60)
-        
-            all_results = []
-            stats = ProcessingStats()
-        
+
             for sheet_info in sheet_infos:
                 print(f"\nVerarbeite Sheet: {sheet_info.name}")
                 print(f"Anzahl Zeilen: {len(sheet_info.data_rows)}")
-            
+
                 sheet_results = []
                 stats.total_rows += len(sheet_info.data_rows)
-            
+
                 for idx, row_idx in enumerate(sheet_info.data_rows, start=1):
                     cell = sheet_info.sheet.cell(
-                        row=row_idx, 
+                        row=row_idx,
                         column=sheet_info.text_column_index
                     )
                     text = str(cell.value) if cell.value else ""
-                
+
                     print(f"  Zeile {idx}/{len(sheet_info.data_rows)}: ", end="", flush=True)
-                
-                    result = llm_analyzer.analyze_text(
-                        text, 
-                        config.check_attributes,
-                        config.research_question,
-                        config.include_reasoning
-                    )
-                
-                    if result.error:
-                        print(f"✗ Fehler: {result.error}")
-                        stats.add_failure(f"Zeile {row_idx}: {result.error}")
+
+                    if has_multi_coder:
+                        try:
+                            ic_result = multi_coder_inst.encode_text(
+                                text=text,
+                                check_attributes=config.check_attributes,
+                                research_question=config.research_question,
+                                include_reasoning=config.include_reasoning
+                            )
+                            intercoder_results.append(ic_result)
+                            result = ic_result.primary_coder.analysis_result
+                            sheet_results.append(result)
+                            print(f"OK ({len(ic_result.coder_results)} Kodierer)")
+                            stats.add_success(result.prompt_tokens, result.completion_tokens)
+                        except Exception as e:
+                            print(f"Fehler: {e}")
+                            stats.add_failure(f"Zeile {row_idx}: {e}")
                     else:
-                        print("✓")
-                        stats.add_success(result.prompt_tokens, result.completion_tokens)
-                
-                    sheet_results.append(result)
-            
+                        result = llm_analyzer.analyze_text(
+                            text,
+                            config.check_attributes,
+                            config.research_question,
+                            config.include_reasoning
+                        )
+
+                        if result.error:
+                            print(f"Fehler: {result.error}")
+                            stats.add_failure(f"Zeile {row_idx}: {result.error}")
+                        else:
+                            print("OK")
+                            stats.add_success(result.prompt_tokens, result.completion_tokens)
+
+                        sheet_results.append(result)
+
                 all_results.extend(sheet_results)
-        
+
             print("\n" + "=" * 60)
             print("Verarbeitung abgeschlossen")
             print(stats.summary())
-        
+
+            # Intercoder-Statistiken
+            if has_multi_coder and intercoder_results:
+                from kappa_calculator import KappaCalculator
+                aggregated = MultiCoder.aggregate_batch_results(intercoder_results)
+                overall_kappa = aggregated.get("__overall__", {}).get("mean_kappa", 0.0)
+                print(f"\n  Intercoder-Reliabilit\u00e4t:")
+                print(f"    Kodierer: {len(config.scientific.coder_models)}")
+                print(f"    \u00dcbereinstimmung: {overall_kappa:.1%}")
+                print(f"    Interpretation: {KappaCalculator.interpret_kappa_de(overall_kappa)}")
+
             # 8. Keyword Categorizer
             print("\n8. Kategorisiere Keywords...")
             keyword_categorizer = KeywordCategorizer(llm_analyzer)
             keyword_to_category, category_assignments = keyword_categorizer.categorize_all(all_results)
-        
+
             # 9. Excel Writer
             print("\n9. Erstelle neue Excel-Datei mit Ergebnissen...")
-            
-            # Initialisiere OutputManager für strukturierte Ausgabe
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_manager = OutputManager(working_directory, timestamp)
-            output_file = output_manager.get_analyzed_path(excel_file.stem)
-            
+            output_manager = OutputManager(working_directory, excel_file.stem, timestamp)
+            output_file = output_manager.get_analyzed_path()
+
             excel_writer = ExcelWriter(
                 confidence_threshold=config.scientific.confidence_threshold if has_science else 0.7
             )
@@ -416,21 +458,25 @@ def main():
                 include_reasoning=config.include_reasoning,
                 include_confidence=has_science
             )
-            
-            # Multi-Coder (optional)
-            if has_multi_coder:
-                print("\n  Multi-Coder Modus aktiviert...")
-                intercoder_results, _ = _run_multi_coder_workflow(
-                    working_directory, config, api_key, all_results, config.check_attributes
-                )
-            
+
+            # Intercoder-Sheet (optional)
+            if has_multi_coder and intercoder_results:
+                intercoder_path = output_manager.get_intercoder_path()
+                from openpyxl import Workbook as OpenpyxlWorkbook
+                wb_ic = OpenpyxlWorkbook()
+                wb_ic.remove(wb_ic.active)
+                excel_writer.create_intercoder_sheet(wb_ic, intercoder_results[0], config.check_attributes)
+                excel_writer.create_kappa_sheet(wb_ic, intercoder_results[0])
+                wb_ic.save(intercoder_path)
+                print(f"  Intercoder-Datei: {intercoder_path}")
+
             # Reproduzierbarkeit (optional)
             if has_science:
                 print("\n" + "=" * 60)
                 print("Erstelle Reproduzierbarkeitsdateien...")
                 print("=" * 60)
                 
-                rm = ReproducibilityManager(output_manager.dirs["reproducibility"])
+                rm = ReproducibilityManager(output_manager.output_dir)
                 
                 metadata = MethodologyMetadata(
                     model=config.model,

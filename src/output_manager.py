@@ -1,4 +1,4 @@
-"""Output Manager für strukturierte Ausgabeverzeichnisse"""
+"""Output Manager fuer strukturierte Ausgabeverzeichnisse"""
 
 from pathlib import Path
 from datetime import datetime
@@ -10,81 +10,59 @@ logger = get_logger("output_manager")
 
 class OutputManager:
     """
-    Verwaltet die Ausgabestruktur für Qlassif-AI Analysen.
+    Verwaltet die Ausgabestruktur fuer Qlassif-AI Analysen.
     
-    Erstellt:
-    - {output_dir}/                      → Hauptausgabe
-    - {output_dir}/analyzed/             → Analysedateien (Excel)
-    - {output_dir}/reproducibility/      → Methodenprotokoll, Codebook, CSV
-    - {output_dir}/audit_trail/          → Audit Trail JSONs
-    - {output_dir}/intercoder/           → Intercoder-Vergleich (nur bei multi_coder)
+    Erstellt ein flaches Verzeichnis:
+    {BasisVerzeichnis}/{InputDateiName}_analyzed/
     """
     
-    def __init__(self, base_dir: Path, timestamp: Optional[str] = None):
+    def __init__(self, base_dir: Path, input_name: str, timestamp: Optional[str] = None):
         """
         Initialisiert OutputManager.
         
         Args:
             base_dir: Basis-Verzeichnis (z.B. Input-Ordner)
-            timestamp: Optionaler Zeitstempel für Verzeichnisname
+            input_name: Name der Eingabedatei (ohne Endung)
+            timestamp: Optionaler Zeitstempel fuer Verzeichnisname
         """
         self.base_dir = Path(base_dir)
+        self.input_name = input_name
         self.timestamp = timestamp or datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # Verzeichnisse erstellen
-        self.dirs = self._create_directories()
-    
-    def _create_directories(self) -> Dict[str, Path]:
-        """Erstellt die Ausgabeverzeichnisse"""
-        dirs = {}
+        # Flaches Ausgabeverzeichnis: {input_name}_analyzed
+        self.output_dir = self.base_dir / f"{input_name}_analyzed"
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
-        dirs["analyzed"] = self.base_dir / "analyzed"
-        dirs["reproducibility"] = self.base_dir / "reproducibility"
-        dirs["audit_trail"] = self.base_dir / "audit_trail"
-        dirs["intercoder"] = self.base_dir / "intercoder"
-        
-        for key, path in dirs.items():
-            path.mkdir(parents=True, exist_ok=True)
-        
-        return dirs
+        logger.info(f"Output-Verzeichnis erstellt: {self.output_dir}")
     
-    def get_analyzed_path(self, filename: str, suffix: str = "analyzed") -> Path:
-        """Gibt Pfad für Analysedatei zurück"""
-        return self.dirs["analyzed"] / f"{filename}_{suffix}_{self.timestamp}.xlsx"
+    def get_analyzed_path(self, suffix: str = "analyzed") -> Path:
+        """Gibt Pfad fuer Analysedatei zurueck"""
+        return self.output_dir / f"{self.input_name}_{suffix}_{self.timestamp}.xlsx"
     
-    def get_intercoder_path(self, filename: str) -> Path:
-        """Gibt Pfad für Intercoder-Datei zurück"""
-        return self.dirs["intercoder"] / f"{filename}_intercoder_{self.timestamp}.xlsx"
+    def get_intercoder_path(self) -> Path:
+        """Gibt Pfad fuer Intercoder-Datei zurueck"""
+        return self.output_dir / f"{self.input_name}_intercoder_{self.timestamp}.xlsx"
+    
+    def get_statistics_path(self) -> Path:
+        """Gibt Pfad fuer Statistik-Datei zurueck"""
+        return self.output_dir / f"{self.input_name}_statistics_{self.timestamp}.xlsx"
     
     def get_methodology_path(self) -> Path:
-        """Gibt Pfad für methodology.md zurück"""
-        return self.dirs["reproducibility"] / "methodology.md"
+        """Gibt Pfad fuer methodology.md zurueck"""
+        return self.output_dir / "methodology.md"
     
     def get_codebook_path(self) -> Path:
-        """Gibt Pfad für codebook.json zurück"""
-        return self.dirs["reproducibility"] / "codebook.json"
+        """Gibt Pfad fuer codebook.json zurueck"""
+        return self.output_dir / "codebook.json"
     
     def get_frequency_tables_path(self) -> Path:
-        """Gibt Pfad für frequency_tables.csv zurück"""
-        return self.dirs["reproducibility"] / "frequency_tables.csv"
+        """Gibt Pfad fuer frequency_tables.csv zurueck"""
+        return self.output_dir / "frequency_tables.csv"
     
     def get_audit_trail_path(self) -> Path:
-        """Gibt Pfad für Audit Trail zurück"""
-        return self.dirs["audit_trail"] / f"audit_{self.timestamp}.json"
-    
-    def get_statistics_path(self, filename: str) -> Path:
-        """Gibt Pfad für Statistik-Datei zurück"""
-        return self.dirs["analyzed"] / f"{filename}_statistics_{self.timestamp}.xlsx"
-    
-    def get_output_summary(self) -> Dict[str, Path]:
-        """Gibt eine Zusammenfassung aller Ausgabepfade zurück"""
-        return self.dirs.copy()
+        """Gibt Pfad fuer Audit Trail zurueck"""
+        return self.output_dir / f"audit_trail_{self.timestamp}.json"
     
     def print_summary(self) -> None:
         """Druckt eine Zusammenfassung der Ausgabestruktur"""
-        print("\n" + "=" * 60)
-        print("Ausgabestruktur:")
-        print("=" * 60)
-        for key, path in self.dirs.items():
-            print(f"  {key:20s} → {path}")
-        print("=" * 60)
+        print(f"\n  Output-Verzeichnis: {self.output_dir}")
