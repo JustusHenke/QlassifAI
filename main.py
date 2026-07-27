@@ -289,7 +289,7 @@ def main():
                     for r in merged_results
                 ]
                 
-                output_files = rm.save_all(
+                output_files = rm.save_all(output_manager.output_dir,
                     metadata, 
                     [{"question": a.question, "answer_type": a.answer_type, 
                       "categories": a.categories or [], "definition": a.definition or ""}
@@ -503,7 +503,7 @@ def main():
                     for r in all_results
                 ]
                 
-                output_files = rm.save_all(
+                output_files = rm.save_all(output_manager.output_dir,
                     metadata,
                     [{"question": a.question, "answer_type": a.answer_type, 
                       "categories": a.categories or [], "definition": a.definition or ""}
