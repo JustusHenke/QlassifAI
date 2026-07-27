@@ -33,7 +33,8 @@ env/
 *.swo
 *~
 *kiro*
-.kiro/ 
+.kiro/
+.dev/
 
 # Logs
 *.log

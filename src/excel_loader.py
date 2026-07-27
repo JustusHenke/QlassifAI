@@ -7,13 +7,9 @@ from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from models import SheetInfo
 from logging_config import get_logger
+from exceptions import NoCompatibleSheetsError, ExcelError
 
 logger = get_logger("excel_loader")
-
-
-class NoCompatibleSheetsError(Exception):
-    """Fehler wenn keine kompatiblen Sheets gefunden werden"""
-    pass
 
 
 class ExcelLoader:

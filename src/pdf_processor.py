@@ -4,13 +4,9 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any
 import pdfplumber
+from exceptions import PDFExtractionError, PDFError, FileDiscoveryError
 
 logger = logging.getLogger(__name__)
-
-
-class PDFExtractionError(Exception):
-    """Fehler bei PDF-Textextraktion"""
-    pass
 
 
 class PDFProcessor:

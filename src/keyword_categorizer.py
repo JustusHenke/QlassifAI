@@ -12,6 +12,11 @@ logger = get_logger("keyword_categorizer")
 class KeywordCategorizer:
     """Gruppiert Keywords in Überkategorien"""
     
+    # Dynamisches Limit basierend auf typischem Token-Budget
+    # GPT-4o-mini: ~128k Tokens, aber Prompt + Antwort braucht Platz
+    # 150 Keywords × ~2 Tokens = 300 Tokens (vernachlässigbar)
+    MAX_KEYWORDS_FOR_CATEGORIZATION = 200
+    
     def __init__(self, llm_analyzer: LLMAnalyzer):
         """
         Initialisiert KeywordCategorizer.
@@ -59,10 +64,11 @@ class KeywordCategorizer:
             logger.warning("Keine Keywords zum Kategorisieren")
             return {}
         
-        # Baue Prompt mit allen Keywords
-        keywords_str = "\n".join([f"- {kw}" for kw in keywords[:150]])  # Limitiere auf 150 Keywords
-        if len(keywords) > 150:
-            keywords_str += f"\n... (und {len(keywords) - 150} weitere)"
+        # Baue Prompt mit allen Keywords (dynamisches Limit)
+        max_kw = self.MAX_KEYWORDS_FOR_CATEGORIZATION
+        keywords_str = "\n".join([f"- {kw}" for kw in keywords[:max_kw]])
+        if len(keywords) > max_kw:
+            keywords_str += f"\n... (und {len(keywords) - max_kw} weitere)"
         
         prompt = f"""Gegeben ist folgende Liste von Keywords aus Textantworten:
 {keywords_str}

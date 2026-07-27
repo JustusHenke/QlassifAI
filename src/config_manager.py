@@ -3,15 +3,11 @@
 import json
 from pathlib import Path
 from typing import Optional
-from models import CheckAttribute, Config
+from models import CheckAttribute, Config, ScientificConfig
 from logging_config import get_logger
+from exceptions import InvalidConfigError, ConfigError
 
 logger = get_logger("config_manager")
-
-
-class InvalidConfigError(Exception):
-    """Fehler bei ungültiger Config-Datei"""
-    pass
 
 
 class ConfigManager:
@@ -22,15 +18,7 @@ class ConfigManager:
         pass
     
     def find_config_file(self, directory: Path = Path(".")) -> Optional[Path]:
-        """
-        Sucht nach QlassifAI_config.json im Verzeichnis.
-        
-        Args:
-            directory: Verzeichnis zum Durchsuchen
-            
-        Returns:
-            Pfad zur QlassifAI_config.json oder None
-        """
+        """Sucht nach QlassifAI_config.json im Verzeichnis."""
         config_path = directory / "QlassifAI_config.json"
         
         if config_path.exists() and config_path.is_file():
@@ -41,29 +29,16 @@ class ConfigManager:
         return None
     
     def load_config(self, config_path: Path) -> Config:
-        """
-        Lädt und validiert Config-Datei.
-        
-        Args:
-            config_path: Pfad zur Config-Datei
-            
-        Returns:
-            Config-Objekt
-            
-        Raises:
-            InvalidConfigError: Bei ungültiger Config
-        """
+        """Lädt und validiert Config-Datei."""
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
             logger.info(f"Config-Datei geladen: {config_path}")
             
-            # Validiere Struktur
             if "check_attributes" not in data:
                 raise InvalidConfigError("Fehlendes Feld: 'check_attributes'")
             
-            # Konvertiere zu CheckAttribute-Objekten
             check_attributes = []
             for attr_data in data["check_attributes"]:
                 try:
@@ -77,13 +52,30 @@ class ConfigManager:
                 except (KeyError, ValueError) as e:
                     raise InvalidConfigError(f"Ungültiges Prüfmerkmal: {e}")
             
-            # Erstelle Config
             version = data.get("version", "1.0")
             model = data.get("model", "gpt-4o-mini")
             provider = data.get("provider", "openai")
             text_column_name = data.get("text_column_name")
             research_question = data.get("research_question")
-            include_reasoning = data.get("include_reasoning", True)  # Default: True
+            include_reasoning = data.get("include_reasoning", True)
+            
+            scientific = None
+            scientific_data = data.get("scientific")
+            if scientific_data:
+                try:
+                    scientific = ScientificConfig(
+                        multi_coder=scientific_data.get("multi_coder", False),
+                        coder_models=scientific_data.get("coder_models", ["gpt-4o-mini"]),
+                        primary_coder=scientific_data.get("primary_coder", "model_1"),
+                        confidence_threshold=scientific_data.get("confidence_threshold", 70),
+                        seed=scientific_data.get("seed"),
+                        output_dir=scientific_data.get("output_dir")
+                    )
+                    logger.info(f"Wissenschaftliche Config geladen: multi_coder={scientific.multi_coder}, "
+                              f"confidence_threshold={scientific.confidence_threshold}")
+                except ValueError as e:
+                    raise InvalidConfigError(f"Ungültige wissenschaftliche Konfiguration: {e}")
+            
             config = Config(
                 check_attributes=check_attributes,
                 version=version,
@@ -91,15 +83,11 @@ class ConfigManager:
                 provider=provider,
                 text_column_name=text_column_name,
                 research_question=research_question,
-                include_reasoning=include_reasoning
+                include_reasoning=include_reasoning,
+                scientific=scientific
             )
             
             logger.info(f"{len(check_attributes)} Prüfmerkmal(e) geladen, Provider: {provider}, Modell: {model}")
-            if text_column_name:
-                logger.info(f"Textspaltenname: {text_column_name}")
-            if research_question:
-                logger.info(f"Untersuchungsfrage: {research_question}")
-            logger.info(f"Begründungen einbeziehen: {include_reasoning}")
             return config
             
         except json.JSONDecodeError as e:
@@ -116,14 +104,7 @@ class ConfigManager:
             raise InvalidConfigError(error_msg)
     
     def save_config(self, config: Config, path: Path = Path("QlassifAI_config.json")) -> None:
-        """
-        Speichert Config als JSON.
-        
-        Args:
-            config: Zu speichernde Config
-            path: Zielpfad (default: QlassifAI_config.json)
-        """
-        # Konvertiere zu Dictionary
+        """Speichert Config als JSON."""
         data = {
             "version": config.version,
             "model": config.model,
@@ -133,13 +114,28 @@ class ConfigManager:
         
         if config.text_column_name:
             data["text_column_name"] = config.text_column_name
-        
         if config.research_question:
             data["research_question"] = config.research_question
-        
-        # Nur hinzufügen wenn nicht Default (True)
         if not config.include_reasoning:
             data["include_reasoning"] = False
+        
+        if config.scientific:
+            scientific_data = {}
+            if config.scientific.multi_coder:
+                scientific_data["multi_coder"] = True
+            if config.scientific.coder_models != ["gpt-4o-mini"]:
+                scientific_data["coder_models"] = config.scientific.coder_models
+            if config.scientific.primary_coder != "model_1":
+                scientific_data["primary_coder"] = config.scientific.primary_coder
+            if config.scientific.confidence_threshold != 70:
+                scientific_data["confidence_threshold"] = config.scientific.confidence_threshold
+            if config.scientific.seed is not None:
+                scientific_data["seed"] = config.scientific.seed
+            if config.scientific.output_dir:
+                scientific_data["output_dir"] = config.scientific.output_dir
+            
+            if scientific_data:
+                data["scientific"] = scientific_data
         
         for attr in config.check_attributes:
             attr_data = {
@@ -152,7 +148,6 @@ class ConfigManager:
                 attr_data["definition"] = attr.definition
             data["check_attributes"].append(attr_data)
         
-        # Speichere als JSON
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         
@@ -160,12 +155,7 @@ class ConfigManager:
         print(f"\n✓ Konfiguration gespeichert: {path}")
     
     def create_config_interactive(self) -> Config:
-        """
-        Interaktiver Dialog zur Erstellung neuer Prüfmerkmale.
-        
-        Returns:
-            Erstellte Config
-        """
+        """Interaktiver Dialog zur Erstellung neuer Prüfmerkmale + wissenschaftlicher Parameter."""
         print("\n" + "=" * 60)
         print("Prüfmerkmale definieren")
         print("=" * 60)
@@ -173,7 +163,6 @@ class ConfigManager:
         print("Textantwort ausgewertet werden.")
         print()
         
-        # Optionale Untersuchungsfrage
         print("\n--- Untersuchungsfrage (optional) ---")
         print("Eine übergeordnete Forschungsfrage kann zusätzlichen Kontext")
         print("für alle Prüffragen liefern.")
@@ -188,7 +177,6 @@ class ConfigManager:
         while True:
             print(f"\n--- Prüfmerkmal {len(check_attributes) + 1} ---")
             
-            # Frage eingeben
             question = input("Prüffrage (oder Enter zum Beenden): ").strip()
             if not question:
                 if not check_attributes:
@@ -196,7 +184,6 @@ class ConfigManager:
                     continue
                 break
             
-            # Antworttyp wählen
             print("\nAntworttyp:")
             print("  1. Boolean (Ja/Nein)")
             print("  2. Kategorial (mehrere Kategorien)")
@@ -208,9 +195,7 @@ class ConfigManager:
                 print("Ungültige Eingabe. Bitte 1 oder 2 wählen.")
             
             if choice == "1":
-                # Boolean
                 print("\nDefinition/Regeln (optional, Enter zum Überspringen):")
-                print("Hier können Sie Kontext geben, der für die Entscheidung wichtig ist.")
                 definition = input("Definition: ").strip()
                 definition = definition if definition else None
                 
@@ -228,17 +213,15 @@ class ConfigManager:
                     print(f"✗ Fehler: {e}")
                     continue
             else:
-                # Categorical
                 print("\nKategorien eingeben (mindestens 2, durch Komma getrennt):")
                 categories_input = input("Kategorien: ").strip()
                 categories = [cat.strip() for cat in categories_input.split(",")]
-                categories = [cat for cat in categories if cat]  # Entferne leere
+                categories = [cat for cat in categories if cat]
                 
                 if len(categories) < 2:
                     print("✗ Mindestens 2 Kategorien erforderlich.")
                     continue
                 
-                # Frage nach Mehrfachkodierung
                 print("\nMehrfachkodierung zulässig?")
                 print("  j = Ja (mehrere Kategorien können gleichzeitig zutreffen)")
                 print("  n = Nein (nur eine Kategorie kann zutreffen)")
@@ -252,7 +235,6 @@ class ConfigManager:
                 answer_type = "multi_categorical" if allow_multi else "categorical"
                 
                 print("\nDefinition/Regeln (optional, Enter zum Überspringen):")
-                print("Hier können Sie Kontext geben, der für die Entscheidung wichtig ist.")
                 definition = input("Definition: ").strip()
                 definition = definition if definition else None
                 
@@ -273,16 +255,85 @@ class ConfigManager:
                     print(f"✗ Fehler: {e}")
                     continue
         
+        # Wissenschaftliche Konfiguration (optional)
+        print("\n--- Wissenschaftliche Parameter (optional) ---")
+        print("Aktivieren Sie optionale Parameter für methodische Robustheit.")
+        print()
+        
+        scientific = None
+        science_choice = input("Wissenschaftlichen Modus aktivieren? (j/n): ").strip().lower()
+        
+        if science_choice in ["j", "ja", "y", "yes"]:
+            multi_choice = input("Multi-Model-Intercoder aktivieren? (j/n): ").strip().lower()
+            multi_coder = multi_choice in ["j", "ja", "y", "yes"]
+            
+            coder_models = ["gpt-4o-mini"]
+            primary_coder = "model_1"
+            if multi_coder:
+                models_input = input("Modelle (kommagetrennt, default: gpt-4o-mini,gpt-4o): ").strip()
+                if models_input:
+                    coder_models = [m.strip() for m in models_input.split(",") if m.strip()]
+                else:
+                    coder_models = ["gpt-4o-mini", "gpt-4o"]
+                
+                print(f"  Kodierer-Modelle: {', '.join(coder_models)}")
+                
+                print("\nPrimärer Kodierer:")
+                print("  1. model_1 (erstes Modell in der Liste)")
+                print("  2. highest_confidence (hoechste Konfidenz)")
+                strategy_choice = input("Strategie (1/2, default: 1): ").strip()
+                primary_coder = "highest_confidence" if strategy_choice == "2" else "model_1"
+                print(f"  Strategie: {primary_coder}")
+            
+            threshold_input = input("Konfidenz-Schwellwert (0-100, default: 70): ").strip()
+            confidence_threshold = 70
+            if threshold_input:
+                try:
+                    confidence_threshold = int(threshold_input)
+                    if not 0 <= confidence_threshold <= 100:
+                        print("  Ungueltiger Wert, verwende 70")
+                        confidence_threshold = 70
+                    else:
+                        print(f"  Schwellwert: {confidence_threshold}%")
+                except ValueError:
+                    print("  Ungueltige Eingabe, verwende 70")
+            
+            seed_input = input("Seed fuer Reproduzierbarkeit (Enter fuer None): ").strip()
+            seed = None
+            if seed_input:
+                try:
+                    seed = int(seed_input)
+                    print(f"  Seed: {seed}")
+                except ValueError:
+                    print("  Ungueltiger Seed, ignoriere")
+            
+            scientific = ScientificConfig(
+                multi_coder=multi_coder,
+                coder_models=coder_models,
+                primary_coder=primary_coder if multi_coder else "model_1",
+                confidence_threshold=confidence_threshold,
+                seed=seed
+            )
+            
+            print(f"\n  Wissenschaftlicher Modus aktiviert")
+            print(f"    Multi-Coder: {multi_coder}")
+            print(f"    Konfidenz-Schwellwert: {confidence_threshold}%")
+        
         # Erstelle Config
         config = Config(
             check_attributes=check_attributes,
-            research_question=research_question
+            research_question=research_question,
+            scientific=scientific
         )
         
         print("\n" + "=" * 60)
         if research_question:
-            print(f"✓ Untersuchungsfrage: {research_question}")
-        print(f"✓ {len(check_attributes)} Prüfmerkmal(e) definiert")
+            print(f"  Untersuchungsfrage: {research_question}")
+        print(f"  {len(check_attributes)} Prüfmerkmal(e) definiert")
+        if scientific:
+            print(f"  Wissenschaftlicher Modus aktiviert")
+            print(f"    Multi-Coder: {scientific.multi_coder}")
+            print(f"    Konfidenz-Schwellwert: {scientific.confidence_threshold}%")
         print("=" * 60)
         
         logger.info(f"{len(check_attributes)} Prüfmerkmal(e) interaktiv erstellt")
@@ -290,20 +341,10 @@ class ConfigManager:
         return config
     
     def load_or_create_config(self, directory: Path = Path(".")) -> Config:
-        """
-        Lädt existierende Config oder erstellt neue interaktiv.
-        
-        Args:
-            directory: Verzeichnis zum Durchsuchen
-            
-        Returns:
-            Config-Objekt
-        """
-        # Suche nach existierender Config
+        """Lädt existierende Config oder erstellt neue interaktiv."""
         config_path = self.find_config_file(directory)
         
         if config_path:
-            # Frage Benutzer, ob laden
             print(f"\n✓ Config-Datei gefunden: {config_path}")
             choice = input("Möchten Sie diese laden? (j/n): ").strip().lower()
             
@@ -317,15 +358,15 @@ class ConfigManager:
                         print(f"✓ Textspaltenname: {config.text_column_name}")
                     if config.research_question:
                         print(f"✓ Untersuchungsfrage: {config.research_question}")
+                    if config.scientific:
+                        print(f"✓ Wissenschaftlicher Modus: aktiviert")
                     return config
                 except InvalidConfigError as e:
                     print(f"✗ Fehler beim Laden: {e}")
                     print("Erstelle neue Konfiguration...")
         
-        # Erstelle neue Config
         config = self.create_config_interactive()
         
-        # Frage, ob speichern
         save_choice = input("\nMöchten Sie die Konfiguration speichern? (j/n): ").strip().lower()
         if save_choice in ["j", "ja", "y", "yes"]:
             save_path = directory / "QlassifAI_config.json"

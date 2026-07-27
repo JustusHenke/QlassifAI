@@ -342,3 +342,160 @@ class StatisticsGenerator:
         # Speichere
         self.save_statistics(workbook, output_path)
         logger.info(f"PDF-Statistiken erstellt: {output_path}")
+
+
+    # ──────────────────────────────────────────────────────────────
+    # Erweiterte Statistiken (Konfidenzintervalle, Intercoder)
+    # ──────────────────────────────────────────────────────────────
+    
+    @staticmethod
+    def calculate_confidence_interval(successes: int, total: int, 
+                                      confidence_level: float = 0.95) -> tuple:
+        """
+        Berechnet Wilson-Score Konfidenzintervall für eine Häufigkeit.
+        
+        Args:
+            successes: Anzahl Erfolge (z.B. 'Ja'-Antworten)
+            total: Gesamtzahl
+            confidence_level: Konfidenzniveau (default: 0.95)
+            
+        Returns:
+            Tuple (lower, upper) als Dezimalzahlen
+        """
+        import math
+        
+        if total == 0:
+            return (0.0, 0.0)
+        
+        p = successes / total
+        z = 1.96 if confidence_level == 0.95 else 2.576 if confidence_level == 0.99 else 1.645
+        
+        denominator = 1 + z**2 / total
+        center = (p + z**2 / (2 * total)) / denominator
+        margin = z * math.sqrt((p * (1 - p) + z**2 / (4 * total)) / total) / denominator
+        
+        return (max(0, center - margin), min(1, center + margin))
+    
+    def calculate_confidence_intervals(self, results, check_attributes) -> List[dict]:
+        """
+        Berechnet Konfidenzintervalle für alle Prüfmerkmale.
+        
+        Args:
+            results: Liste der Analyseergebnisse
+            check_attributes: Prüfmerkmale
+            
+        Returns:
+            Liste von dicts mit question, value, count, ci_lower, ci_upper
+        """
+        ci_results = []
+        
+        for attr in check_attributes:
+            question = attr.question
+            value_counts = {}
+            
+            for result in results:
+                value = result.custom_checks.get(question)
+                if value is not None:
+                    if attr.answer_type == "boolean":
+                        display_value = "Ja" if value else "Nein"
+                    elif attr.answer_type == "multi_categorical" and isinstance(value, list):
+                        for v in value:
+                            display_value = str(v)
+                            value_counts[display_value] = value_counts.get(display_value, 0) + 1
+                        continue
+                    else:
+                        display_value = str(value)
+                    value_counts[display_value] = value_counts.get(display_value, 0) + 1
+            
+            total = sum(value_counts.values())
+            for value, count in value_counts.items():
+                lower, upper = self.calculate_confidence_interval(count, total)
+                ci_results.append({
+                    "question": question,
+                    "value": value,
+                    "count": count,
+                    "total": total,
+                    "percentage": count / total * 100 if total > 0 else 0,
+                    "ci_lower": lower * 100,
+                    "ci_upper": upper * 100,
+                    "ci_width": (upper - lower) * 100
+                })
+        
+        return ci_results
+    
+    def calculate_intercoder_statistics(self, intercoder_result) -> dict:
+        """
+        Berechnet Intercoder-Statistiken für ein IntercoderResult.
+        
+        Args:
+            intercoder_result: IntercoderResult-Objekt
+            
+        Returns:
+            Dict mit agreement_rate, kappa_scores, overall_kappa
+        """
+        if not intercoder_result or not intercoder_result.agreements:
+            return {
+                "agreement_rate": 0.0,
+                "total_items": 0,
+                "agreed_items": 0,
+                "kappa_scores": {},
+                "overall_kappa": 0.0,
+                "overall_interpretation": "unbekannt"
+            }
+        
+        agreements = intercoder_result.agreements
+        agreed = sum(1 for v in agreements.values() if v)
+        total = len(agreements)
+        
+        return {
+            "agreement_rate": agreed / total if total > 0 else 0.0,
+            "total_items": total,
+            "agreed_items": agreed,
+            "kappa_scores": intercoder_result.kappa_scores,
+            "overall_kappa": intercoder_result.overall_kappa,
+            "overall_interpretation": intercoder_result.overall_interpretation
+        }
+    
+    def add_confidence_interval_sheet(self, workbook: Workbook, results, check_attributes):
+        """
+        Fügt Konfidenzintervall-Sheet zum Workbook hinzu.
+        
+        Args:
+            workbook: Das Workbook
+            results: Analyseergebnisse
+            check_attributes: Prüfmerkmale
+        """
+        from openpyxl.styles import Font, PatternFill, Alignment
+        
+        sheet = workbook.create_sheet(title="Konfidenzintervalle")
+        current_row = 1
+        
+        # Überschrift
+        cell = sheet.cell(row=current_row, column=1, value="Konfidenzintervalle (95% Wilson-Score)")
+        cell.font = Font(bold=True, size=14)
+        current_row += 2
+        
+        # Header
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        headers = ["Prüfmerkmal", "Wert", "Häufigkeit", "Prozent", "CI unten", "CI oben", "CI Breite"]
+        
+        for col_idx, header in enumerate(headers, start=1):
+            cell = sheet.cell(row=current_row, column=col_idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+        current_row += 1
+        
+        # Daten
+        ci_results = self.calculate_confidence_intervals(results, check_attributes)
+        for ci in ci_results:
+            sheet.cell(row=current_row, column=1, value=ci["question"])
+            sheet.cell(row=current_row, column=2, value=ci["value"])
+            sheet.cell(row=current_row, column=3, value=ci["count"])
+            sheet.cell(row=current_row, column=4, value=f'{ci["percentage"]:.1f}%')
+            sheet.cell(row=current_row, column=5, value=f'{ci["ci_lower"]:.1f}%')
+            sheet.cell(row=current_row, column=6, value=f'{ci["ci_upper"]:.1f}%')
+            sheet.cell(row=current_row, column=7, value=f'{ci["ci_width"]:.1f}%')
+            current_row += 1
+        
+        logger.info(f"Konfidenzintervalle-Sheet hinzugefügt: {len(ci_results)} Einträge")

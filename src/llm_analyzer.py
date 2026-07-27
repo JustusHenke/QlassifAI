@@ -2,9 +2,10 @@
 
 import json
 import time
-from typing import List, Union
+from typing import List, Union, Optional
 from openai import OpenAI, APIError, APITimeoutError, RateLimitError
 from models import CheckAttribute, AnalysisResult
+from confidence_engine import ConfidenceEngine
 from logging_config import get_logger
 
 logger = get_logger("llm_analyzer")
@@ -158,6 +159,13 @@ WICHTIG:
         prompt += """
 - Setze Prüfmerkmale auf null, wenn der Text KEINEN Bezug zum Thema hat"""
         
+        # Füge Konfidenz-Sektion hinzu
+        if check_attributes:
+            prompt += ConfidenceEngine.build_confidence_prompt_section(
+                [{"question": a.question, "answer_type": a.answer_type} for a in check_attributes],
+                include_alternatives=True
+            )
+        
         return prompt
     
     def _clean_json_response(self, response_text: str) -> str:
@@ -170,6 +178,9 @@ WICHTIG:
         Returns:
             Bereinigte JSON-String
         """
+        if not response_text:
+            return ""
+        
         # Entferne Markdown-Code-Blöcke (```json ... ``` oder ``` ... ```)
         if response_text.startswith("```"):
             # Finde Start und Ende der Code-Blöcke
@@ -181,6 +192,14 @@ WICHTIG:
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             response_text = "\n".join(lines)
+        
+        # Entferne text vor dem ersten { und nach dem letzten }
+        # (manche LLMs fügen Erklärtext vor/nach JSON ein)
+        first_brace = response_text.find("{")
+        last_brace = response_text.rfind("}")
+        
+        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+            response_text = response_text[first_brace:last_brace + 1]
         
         return response_text.strip()
     
@@ -246,6 +265,30 @@ WICHTIG:
                 custom_checks=custom_checks,
                 custom_checks_reasons=custom_checks_reasons
             )
+            
+            # Extrahiere Konfidenz-Scores (optional)
+            confidence_data = data.get("confidence", {})
+            confidence_reasons = data.get("confidence_reasons", {})
+            alternatives_data = data.get("alternatives", {})
+            
+            for attr in check_attributes:
+                question = attr.question
+                
+                # Extrahiere Score
+                score_raw = confidence_data.get(question)
+                if score_raw is not None:
+                    score = ConfidenceEngine._normalize_score(score_raw)
+                    reasoning = confidence_reasons.get(question, "")
+                    alternatives = alternatives_data.get(question, [])
+                    if not isinstance(alternatives, list):
+                        alternatives = [alternatives] if alternatives else []
+                    
+                    result.add_confidence(
+                        question=question,
+                        score=score,
+                        reasoning=reasoning,
+                        alternatives=alternatives
+                    )
             
             return result
             

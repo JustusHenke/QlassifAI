@@ -34,17 +34,12 @@ class CheckAttribute:
     
     def __post_init__(self):
         """Validiert die Daten nach Initialisierung"""
-        # Validiere answer_type
         if self.answer_type not in ["boolean", "categorical", "multi_categorical"]:
             raise ValueError(
                 f"answer_type muss 'boolean', 'categorical' oder 'multi_categorical' sein, nicht '{self.answer_type}'"
             )
-        
-        # Validiere question
         if not self.question or not self.question.strip():
             raise ValueError("question darf nicht leer sein")
-        
-        # Validiere categories für categorical und multi_categorical type
         if self.answer_type in ["categorical", "multi_categorical"]:
             if not self.categories:
                 raise ValueError(
@@ -54,12 +49,35 @@ class CheckAttribute:
                 raise ValueError(
                     "categories muss mindestens 2 Kategorien enthalten"
                 )
-        
-        # Für boolean sollten keine categories angegeben werden
         if self.answer_type == "boolean" and self.categories is not None:
             raise ValueError(
                 "categories sollte für answer_type 'boolean' None sein"
             )
+
+
+@dataclass
+class ScientificConfig:
+    """Optionale wissenschaftliche Parameter für methodische Robustheit"""
+    multi_coder: bool = False
+    coder_models: List[str] = field(default_factory=lambda: ["gpt-4o-mini"])
+    primary_coder: str = "model_1"  # "model_1" oder "highest_confidence"
+    confidence_threshold: int = 70  # Schwellwert 0-100
+    seed: Optional[int] = None
+    output_dir: Optional[str] = None
+    
+    def __post_init__(self):
+        if self.primary_coder not in ["model_1", "highest_confidence"]:
+            raise ValueError(
+                f"primary_coder muss 'model_1' oder 'highest_confidence' sein, nicht '{self.primary_coder}'"
+            )
+        if not 0 <= self.confidence_threshold <= 100:
+            raise ValueError(f"confidence_threshold muss zwischen 0 und 100 liegen, nicht {self.confidence_threshold}")
+        if self.multi_coder and len(self.coder_models) < 2:
+            raise ValueError("multi_coder erfordert mindestens 2 Modelle in coder_models")
+    
+    @property
+    def is_intercoder_active(self) -> bool:
+        return self.multi_coder and len(self.coder_models) >= 2
 
 
 @dataclass
@@ -68,23 +86,19 @@ class Config:
     check_attributes: List[CheckAttribute]
     version: str = "1.0"
     model: str = "gpt-4o-mini"
-    provider: str = "openai"  # "openai" oder "openrouter"
-    text_column_name: Optional[str] = None  # Optionaler Name der Textspalte
-    research_question: Optional[str] = None  # Optionale Untersuchungsfrage für Kontext
-    include_reasoning: bool = True  # Ob Begründungen für Prüfmerkmale generiert werden sollen
+    provider: str = "openai"
+    text_column_name: Optional[str] = None
+    research_question: Optional[str] = None
+    include_reasoning: bool = True
+    scientific: Optional[ScientificConfig] = None
     
     def __post_init__(self):
-        """Validiert die Daten nach Initialisierung"""
         if not self.check_attributes:
             raise ValueError("check_attributes darf nicht leer sein")
-        
-        # Validiere provider
         if self.provider not in ["openai", "openrouter"]:
             raise ValueError(
                 f"provider muss 'openai' oder 'openrouter' sein, nicht '{self.provider}'"
             )
-        
-        # Validiere, dass alle Elemente CheckAttribute sind
         for attr in self.check_attributes:
             if not isinstance(attr, CheckAttribute):
                 raise ValueError(
@@ -101,30 +115,70 @@ class AnalysisResult:
     sentiment_reason: str
     keywords: List[str]
     custom_checks: Dict[str, Union[bool, str, List[str], None]]
-    custom_checks_reasons: Dict[str, str] = None  # Begründungen für custom_checks
+    custom_checks_reasons: Dict[str, str] = None
     error: Optional[str] = None
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
     
+    # Confidence Scores (wissenschaftliche Methodik)
+    confidence_scores: Dict[str, float] = field(default_factory=dict)
+    confidence_reasons: Dict[str, str] = field(default_factory=dict)
+    alternative_codes: Dict[str, List[str]] = field(default_factory=dict)
+    low_confidence_flags: List[str] = field(default_factory=list)
+    
     def __post_init__(self):
-        """Validiert die Daten nach Initialisierung"""
-        # Initialisiere custom_checks_reasons falls None
         if self.custom_checks_reasons is None:
             self.custom_checks_reasons = {}
         
-        # Validiere sentiment
         valid_sentiments = ["positiv", "negativ", "gemischt"]
         if self.sentiment not in valid_sentiments:
             raise ValueError(
                 f"sentiment muss einer von {valid_sentiments} sein, nicht '{self.sentiment}'"
             )
         
-        # Validiere keywords Anzahl (2-4)
         if not (2 <= len(self.keywords) <= 4):
             raise ValueError(
                 f"keywords muss 2-4 Elemente enthalten, hat aber {len(self.keywords)}"
             )
+    
+    def add_confidence(self, question: str, score: float, reasoning: str = "",
+                       alternatives: Optional[List[str]] = None, threshold: float = 0.7) -> None:
+        """
+        Fügt Konfidenz-Score für ein Prüfmerkmal hinzu.
+        
+        Args:
+            question: Die Prüffrage
+            score: Konfidenz-Score (0.0-1.0 oder 0-100)
+            reasoning: Begründung für die Konfidenz
+            alternatives: Alternative Klassifikationen
+            threshold: Schwellwert für niedrige Konfidenz (default: 0.7)
+        """
+        if score > 1.0:
+            score = score / 100.0
+        
+        self.confidence_scores[question] = score
+        if reasoning:
+            self.confidence_reasons[question] = reasoning
+        if alternatives:
+            self.alternative_codes[question] = alternatives
+        
+        if score < threshold:
+            if question not in self.low_confidence_flags:
+                self.low_confidence_flags.append(question)
+        else:
+            if question in self.low_confidence_flags:
+                self.low_confidence_flags.remove(question)
+    
+    def get_overall_confidence(self) -> float:
+        """Berechnet durchschnittliche Konfidenz über alle Prüfmerkmale"""
+        if not self.confidence_scores:
+            return 0.0
+        return sum(self.confidence_scores.values()) / len(self.confidence_scores)
+    
+    def has_low_confidence(self) -> bool:
+        """Prüft ob mindestens ein Prüfmerkmal niedrige Konfidenz hat"""
+        return len(self.low_confidence_flags) > 0
 
 
 @dataclass
@@ -133,7 +187,6 @@ class CategoryMapping:
     categories: Dict[str, List[str]]
     
     def __post_init__(self):
-        """Validiert die Daten nach Initialisierung"""
         if not self.categories:
             raise ValueError("categories darf nicht leer sein")
 
@@ -150,30 +203,16 @@ class ProcessingStats:
     total_tokens: int = 0
     
     def add_success(self, prompt_tokens: int = 0, completion_tokens: int = 0):
-        """
-        Erhöht den Erfolgs-Zähler und fügt Token-Statistiken hinzu.
-        
-        Args:
-            prompt_tokens: Anzahl Prompt-Tokens
-            completion_tokens: Anzahl Completion-Tokens
-        """
         self.successful += 1
         self.total_prompt_tokens += prompt_tokens
         self.total_completion_tokens += completion_tokens
         self.total_tokens += (prompt_tokens + completion_tokens)
     
     def add_failure(self, error_msg: str):
-        """Erhöht den Fehler-Zähler und fügt Fehlermeldung hinzu"""
         self.failed += 1
         self.errors.append(error_msg)
     
     def summary(self) -> str:
-        """
-        Erstellt eine Zusammenfassung der Verarbeitungsstatistiken.
-        
-        Returns:
-            Formatierte Zusammenfassung als String
-        """
         if self.total_rows == 0:
             return "Keine Zeilen verarbeitet"
         
@@ -194,7 +233,6 @@ Token-Statistiken:
         
         if self.errors:
             summary += f"\nFehler ({len(self.errors)}):\n"
-            # Zeige maximal die ersten 5 Fehler
             for error in self.errors[:5]:
                 summary += f"  - {error}\n"
             if len(self.errors) > 5:
@@ -203,7 +241,6 @@ Token-Statistiken:
         return summary
     
     def __post_init__(self):
-        """Validiert die Daten nach Initialisierung"""
         if self.total_rows < 0:
             raise ValueError("total_rows muss >= 0 sein")
         if self.successful < 0:
@@ -229,7 +266,6 @@ class PDFInfo:
     chunk_count: int
     
     def __post_init__(self):
-        """Validiert die Daten nach Initialisierung"""
         if self.size_bytes < 0:
             raise ValueError("size_bytes muss >= 0 sein")
         if self.page_count < 0:
@@ -253,14 +289,6 @@ class PDFProcessingStats:
     total_tokens: int = 0
     
     def add_pdf_success(self, chunk_count: int, prompt_tokens: int, completion_tokens: int):
-        """
-        Zeichnet erfolgreiche PDF-Verarbeitung auf.
-        
-        Args:
-            chunk_count: Anzahl der Chunks für dieses PDF
-            prompt_tokens: Anzahl Prompt-Tokens
-            completion_tokens: Anzahl Completion-Tokens
-        """
         self.successful_pdfs += 1
         self.total_chunks += chunk_count
         self.total_prompt_tokens += prompt_tokens
@@ -268,22 +296,10 @@ class PDFProcessingStats:
         self.total_tokens += (prompt_tokens + completion_tokens)
     
     def add_pdf_failure(self, error_msg: str):
-        """
-        Zeichnet fehlgeschlagene PDF-Verarbeitung auf.
-        
-        Args:
-            error_msg: Fehlermeldung
-        """
         self.failed_pdfs += 1
         self.errors.append(error_msg)
     
     def summary(self) -> str:
-        """
-        Erstellt eine Zusammenfassung der PDF-Verarbeitungsstatistiken.
-        
-        Returns:
-            Formatierte Zusammenfassung als String
-        """
         if self.total_pdfs == 0:
             return "Keine PDFs verarbeitet"
         
@@ -313,7 +329,6 @@ Token-Statistiken:
         return summary
     
     def __post_init__(self):
-        """Validiert die Daten nach Initialisierung"""
         if self.total_pdfs < 0:
             raise ValueError("total_pdfs muss >= 0 sein")
         if self.successful_pdfs < 0:
@@ -334,7 +349,6 @@ class Chunk:
     end_position: int
     
     def __post_init__(self):
-        """Validiert die Daten nach Initialisierung"""
         if self.chunk_id < 0:
             raise ValueError("chunk_id muss >= 0 sein")
         if self.char_count < 0:
@@ -356,13 +370,12 @@ class MergedResult:
     sentiment_reason: str
     keywords: List[str]
     custom_checks: Dict[str, Union[str, bool, List[str]]]
-    custom_checks_reasons: Dict[str, str]  # Begründungen für custom_checks
+    custom_checks_reasons: Dict[str, str]
     keyword_category: str
     chunk_count: int
     error: Optional[str] = None
     
     def __post_init__(self):
-        """Validiert die Daten nach Initialisierung"""
         if self.sentiment not in [-1, 0, 1]:
             raise ValueError(f"sentiment muss -1, 0 oder 1 sein, nicht {self.sentiment}")
         if self.chunk_count < 1:

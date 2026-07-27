@@ -5,13 +5,9 @@ from pathlib import Path
 from typing import Optional, List
 from dotenv import load_dotenv
 from logging_config import get_logger
+from exceptions import MissingAPIKeyError
 
 logger = get_logger("environment_manager")
-
-
-class MissingAPIKeyError(Exception):
-    """Fehler wenn kein API-Key gefunden wird"""
-    pass
 
 
 class EnvironmentManager:
@@ -129,18 +125,26 @@ class EnvironmentManager:
         api_key = api_key.strip()
         
         if provider == "openrouter":
-            # OpenRouter API-Keys haben eigenes Format
-            if len(api_key) < 20:
-                logger.warning("OpenRouter API-Key ist zu kurz")
+            # OpenRouter: beginnt mit "sk-or-" oder "sk-or-v1-"
+            if not api_key.startswith("sk-or-"):
+                logger.warning("OpenRouter API-Key beginnt nicht mit 'sk-or-'")
+                return False
+            # Mindestlänge 40 Zeichen (typisch: 60+)
+            if len(api_key) < 40:
+                logger.warning(f"OpenRouter API-Key ist zu kurz ({len(api_key)} Zeichen, minimum 40)")
                 return False
         else:
-            # OpenAI API-Keys beginnen typischerweise mit "sk-"
-            if not api_key.startswith("sk-"):
-                logger.warning("OpenAI API-Key beginnt nicht mit 'sk-'")
+            # OpenAI: alte Keys beginnen mit "sk-", neue mit "sk-proj-"
+            if not (api_key.startswith("sk-") or api_key.startswith("sk-proj-")):
+                logger.warning("OpenAI API-Key beginnt nicht mit 'sk-' oder 'sk-proj-'")
                 return False
-            
-            if len(api_key) < 20:
-                logger.warning("OpenAI API-Key ist zu kurz")
+            # Mindestlänge 40 Zeichen (typisch: 51 für alte, 100+ für neue Keys)
+            if len(api_key) < 40:
+                logger.warning(f"OpenAI API-Key ist zu kurz ({len(api_key)} Zeichen, minimum 40)")
+                return False
+            # Keine Leerzeichen erlaubt
+            if " " in api_key:
+                logger.warning("OpenAI API-Key enthält Leerzeichen")
                 return False
         
         return True
