@@ -350,7 +350,7 @@ WICHTIG:
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            max_tokens=1000
+            max_tokens=4000
         )
         
         response_text = response.choices[0].message.content
@@ -362,7 +362,7 @@ WICHTIG:
         """Anthropic API-Aufruf"""
         response = self.client.messages.create(
             model=self.model,
-            max_tokens=1000,
+            max_tokens=4000,
             system="Du bist ein Experte für Textanalyse. Antworte immer im angegebenen JSON-Format.",
             messages=[
                 {"role": "user", "content": prompt}
@@ -383,7 +383,7 @@ WICHTIG:
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            max_tokens=1000
+            max_tokens=4000
         )
         
         response_text = response.choices[0].message.content
@@ -434,7 +434,7 @@ WICHTIG:
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.3,
-                    max_tokens=1000
+                    max_tokens=4000
                 )
                 
                 # Extrahiere Antwort
