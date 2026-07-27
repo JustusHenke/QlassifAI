@@ -95,9 +95,10 @@ class Config:
     def __post_init__(self):
         if not self.check_attributes:
             raise ValueError("check_attributes darf nicht leer sein")
-        if self.provider not in ["openai", "openrouter"]:
+        valid_providers = ["openai", "openrouter", "ollama", "lmstudio", "anthropic", "mistral"]
+        if self.provider not in valid_providers:
             raise ValueError(
-                f"provider muss 'openai' oder 'openrouter' sein, nicht '{self.provider}'"
+                f"provider muss einer von {valid_providers} sein, nicht '{self.provider}'"
             )
         for attr in self.check_attributes:
             if not isinstance(attr, CheckAttribute):

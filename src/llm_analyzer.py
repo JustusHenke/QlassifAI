@@ -14,28 +14,65 @@ logger = get_logger("llm_analyzer")
 class LLMAnalyzer:
     """Führt alle LLM-basierten Analysen durch"""
     
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini", provider: str = "openai", timeout: float = 60.0):
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini", provider: str = "openrouter", 
+                 timeout: float = 60.0, base_url: str = None):
         """
         Initialisiert LLMAnalyzer.
         
         Args:
-            api_key: API-Key (OpenAI oder OpenRouter)
+            api_key: API-Key (oder "ollama" für lokale Modelle)
             model: Zu verwendendes Modell
-            provider: "openai" oder "openrouter"
+            provider: "openrouter", "openai", "ollama", "lmstudio"
             timeout: Timeout in Sekunden
+            base_url: Optionale Basis-URL (überschreibt Provider-Default)
         """
         self.provider = provider
         self.model = model
         self.timeout = timeout
         
-        if provider == "openrouter":
-            # OpenRouter verwendet OpenAI-kompatible API
+        # Provider-spezifische Konfiguration
+        if provider == "ollama":
+            url = base_url or "http://localhost:11434/v1"
+            self.client = OpenAI(
+                api_key="ollama",
+                base_url=url,
+                timeout=timeout
+            )
+            logger.info(f"LLMAnalyzer initialisiert mit Ollama, Modell: {model}, URL: {url}, Timeout: {timeout}s")
+        
+        elif provider == "lmstudio":
+            url = base_url or "http://localhost:1234/v1"
+            self.client = OpenAI(
+                api_key="lmstudio",
+                base_url=url,
+                timeout=timeout
+            )
+            logger.info(f"LLMAnalyzer initialisiert mit LMStudio, Modell: {model}, URL: {url}, Timeout: {timeout}s")
+        
+        elif provider == "openrouter":
             self.client = OpenAI(
                 api_key=api_key,
                 base_url="https://openrouter.ai/api/v1",
                 timeout=timeout
             )
             logger.info(f"LLMAnalyzer initialisiert mit OpenRouter, Modell: {model}, Timeout: {timeout}s")
+        
+        elif provider == "anthropic":
+            try:
+                from anthropic import Anthropic
+                self.client = Anthropic(api_key=api_key, timeout=timeout)
+                logger.info(f"LLMAnalyzer initialisiert mit Anthropic, Modell: {model}, Timeout: {timeout}s")
+            except ImportError:
+                raise ImportError("anthropic Package nicht installiert. Fuehren Sie aus: pip install anthropic")
+        
+        elif provider == "mistral":
+            try:
+                from mistralai import Mistral
+                self.client = Mistral(api_key=api_key)
+                logger.info(f"LLMAnalyzer initialisiert mit Mistral, Modell: {model}, Timeout: {timeout}s")
+            except ImportError:
+                raise ImportError("mistralai Package nicht installiert. Fuehren Sie aus: pip install mistralai")
+        
         else:
             # Standard OpenAI
             self.client = OpenAI(api_key=api_key, timeout=timeout)
@@ -302,6 +339,57 @@ WICHTIG:
             logger.error(error_msg)
             logger.error(f"Rohe Antwort: {response_text[:500]}")
             raise ValueError(error_msg)
+    
+
+    def _call_openai_compatible(self, prompt: str) -> tuple:
+        """OpenAI-kompatibler API-Aufruf"""
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": "Du bist ein Experte für Textanalyse. Antworte immer im angegebenen JSON-Format."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=1000
+        )
+        
+        response_text = response.choices[0].message.content
+        usage = response.usage
+        
+        return response_text, usage
+    
+    def _call_anthropic(self, prompt: str) -> tuple:
+        """Anthropic API-Aufruf"""
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1000,
+            system="Du bist ein Experte für Textanalyse. Antworte immer im angegebenen JSON-Format.",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        response_text = response.content[0].text
+        usage = response.usage
+        
+        return response_text, usage
+    
+    def _call_mistral(self, prompt: str) -> tuple:
+        """Mistral API-Aufruf"""
+        response = self.client.chat.complete(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": "Du bist ein Experte für Textanalyse. Antworte immer im angegebenen JSON-Format."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=1000
+        )
+        
+        response_text = response.choices[0].message.content
+        usage = response.usage
+        
+        return response_text, usage
     
     def analyze_text(self, text: str, check_attributes: List[CheckAttribute], 
                     research_question: str = None, include_reasoning: bool = True, 

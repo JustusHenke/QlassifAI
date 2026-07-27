@@ -193,7 +193,7 @@ class TestScientificWorkflow:
                 avg_kappa = sum(kappa_results[question]) / len(kappa_results[question])
                 assert avg_kappa >= 0
             
-            print("  ✓ End-to-End Excel-Modus OK")
+            print("  OK End-to-End Excel-Modus OK")
     
     def test_confidence_workflow(self):
         """Test des Confidence-Workflows"""
@@ -222,7 +222,7 @@ class TestScientificWorkflow:
         assert stats["count"] == 2
         assert stats["low_count"] == 1
         
-        print("  ✓ Confidence Workflow OK")
+        print("  OK Confidence Workflow OK")
     
     def test_intercoder_workflow(self):
         """Test des Intercoder-Workflows"""
@@ -256,7 +256,7 @@ class TestScientificWorkflow:
         )
         assert kappa == 1.0
         
-        print("  ✓ Intercoder Workflow OK")
+        print("  OK Intercoder Workflow OK")
     
     def test_reproducibility_workflow(self):
         """Test des Reproduzierbarkeits-Workflows"""
@@ -313,7 +313,7 @@ class TestScientificWorkflow:
             assert "gpt-4o-mini" in meth_content
             assert "Test?" in meth_content
             
-            print("  ✓ Reproducibility Workflow OK")
+            print("  OK Reproducibility Workflow OK")
     
     def test_excel_output_workflow(self):
         """Test des Excel-Output-Workflows"""
@@ -354,7 +354,7 @@ class TestScientificWorkflow:
         offset = ew._write_confidence_to_row(ws, 2, 1, results[0], attrs)
         assert offset == 2
         
-        print("  ✓ Excel Output Workflow OK")
+        print("  OK Excel Output Workflow OK")
 
 
 def run_tests():
@@ -377,10 +377,10 @@ def run_tests():
             passed += 1
         except AssertionError as e:
             failed += 1
-            print(f"  ✗ {t.__name__}: {e}")
+            print(f"  FAIL {t.__name__}: {e}")
         except Exception as e:
             failed += 1
-            print(f"  ✗ {t.__name__}: {type(e).__name__}: {e}")
+            print(f"  FAIL {t.__name__}: {type(e).__name__}: {e}")
     
     return passed, failed
 

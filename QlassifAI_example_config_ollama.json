@@ -1,0 +1,34 @@
+{
+  "version": "2.0",
+  "provider": "ollama",
+  "model": "llama3.1:8b",
+  "text_column_name": "Textantwort",
+  "research_question": "Wie bewerten Studierende die Unterstützungsangebote im ersten Semester?",
+  "include_reasoning": true,
+  "scientific": {
+    "multi_coder": false,
+    "coder_models": ["llama3.1:8b"],
+    "primary_coder": "model_1",
+    "confidence_threshold": 70,
+    "seed": 42,
+    "output_dir": null
+  },
+  "check_attributes": [
+    {
+      "question": "Wird über Wettbewerb gesprochen?",
+      "answer_type": "boolean",
+      "definition": "Wettbewerb bedeutet Vergleich mit anderen Anbietern, Konkurrenten oder Alternativen."
+    },
+    {
+      "question": "Welche Themen werden angesprochen?",
+      "answer_type": "multi_categorical",
+      "categories": [
+        "Preis",
+        "Qualität",
+        "Support",
+        "Innovation"
+      ],
+      "definition": "Mehrere Themen können gleichzeitig im Text vorkommen."
+    }
+  ]
+}

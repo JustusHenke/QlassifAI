@@ -49,23 +49,32 @@ class EnvironmentManager:
         logger.warning("Keine .env-Datei gefunden.")
         return None
     
-    def get_api_key(self, provider: str = "openai") -> str:
+    def get_api_key(self, provider: str = "openrouter") -> str:
         """
         Holt API-Key aus Umgebungsvariablen basierend auf Provider.
-        Prüft zuerst System-Umgebungsvariablen, dann .env-Datei.
-        
+        Prueft zuerst System-Umgebungsvariablen, dann .env-Datei.
+
         Args:
-            provider: "openai" oder "openrouter"
-        
+            provider: "openrouter", "openai", "ollama", "lmstudio"
+
         Returns:
-            API-Key als String
-            
+            API-Key als String (oder "ollama"/"lmstudio" fuer lokale Modelle)
+
         Raises:
             MissingAPIKeyError: Wenn kein API-Key gefunden wird
         """
-        # Bestimme Umgebungsvariablen-Namen
+        # Lokale Provider benoetigen keinen API-Key
+        if provider in ("ollama", "lmstudio"):
+            logger.info(f"Provider '{provider}' benoetigt keinen API-Key")
+            return provider
+
+        # Bestimme Umgebungsvariablen-Namen fuer Cloud-Provider
         if provider == "openrouter":
             env_var_name = "OPENROUTER_API_KEY"
+        elif provider == "anthropic":
+            env_var_name = "ANTHROPIC_API_KEY"
+        elif provider == "mistral":
+            env_var_name = "MISTRAL_API_KEY"
         else:
             env_var_name = "OPENAI_API_KEY"
         

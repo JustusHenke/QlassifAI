@@ -1,10 +1,18 @@
 {
-  "version": "1.0",
-  "provider": "openai",
-  "model": "gpt-4o-mini",
+  "version": "2.0",
+  "provider": "openrouter",
+  "model": "google/gemini-2.0-flash-001",
   "text_column_name": "Textantwort",
   "research_question": "Wie bewerten Studierende die Unterstützungsangebote im ersten Semester?",
   "include_reasoning": true,
+  "scientific": {
+    "multi_coder": false,
+    "coder_models": ["google/gemini-2.0-flash-001"],
+    "primary_coder": "model_1",
+    "confidence_threshold": 70,
+    "seed": null,
+    "output_dir": null
+  },
   "check_attributes": [
     {
       "question": "Wird über Wettbewerb gesprochen?",

@@ -174,13 +174,13 @@ def run_tests():
         try:
             t()
             passed += 1
-            print(f"  ✓ {t.__name__}")
+            print(f"  OK {t.__name__}")
         except AssertionError as e:
             failed += 1
-            print(f"  ✗ {t.__name__}: {e}")
+            print(f"  FAIL {t.__name__}: {e}")
         except Exception as e:
             failed += 1
-            print(f"  ✗ {t.__name__}: {type(e).__name__}: {e}")
+            print(f"  FAIL {t.__name__}: {type(e).__name__}: {e}")
     
     return passed, failed
 
