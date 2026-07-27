@@ -9,6 +9,13 @@ und dieses Projekt haelt sich an [Semantic Versioning](https://semver.org/lang/d
 
 Keine Aenderungen seit dem letzten Release.
 
+## [2.0.1] - 2025-07-27
+
+### Geaendert
+- `max_tokens` von 1000 auf 10000 erhoeht (verhindert JSON-Abschneiden bei langen Fragebezeichnungen)
+- `save_all()` Aufrufe in main.py korrigiert (output_dir Parameter fehlte)
+- Example Config mit angepassten Prueffragen fuer Erstsemester-Unterstuetzung
+
 ## [2.0.0] - 2025-07-27
 
 ### Hinzugefuegt
