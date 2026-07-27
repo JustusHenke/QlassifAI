@@ -448,7 +448,7 @@ def main():
             excel_writer = ExcelWriter(
                 confidence_threshold=config.scientific.confidence_threshold if has_science else 0.7
             )
-            excel_writer.create_new_workbook_with_results(
+            workbook = excel_writer.create_new_workbook_with_results(
                 sheet_infos=sheet_infos,
                 all_results=all_results,
                 category_assignments=category_assignments,
