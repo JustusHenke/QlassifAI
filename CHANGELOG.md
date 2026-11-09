@@ -5,6 +5,11 @@ Alle wesentlichen Aenderungen an Qlassif-AI.
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 und dieses Projekt haelt sich an [Semantic Versioning](https://semver.org/lang/de/).
 
+## [2.1.3] - 2026-11-09
+
+### Behoben
+- Checkpoint-Speichern bricht die Analyse nicht mehr ab: Sync-Dienste (Dropbox/OneDrive) koennen die Checkpoint-Datei kurzzeitig sperren; jetzt 3 Versuche mit Wartezeit, dann Fallback auf direktes Schreiben, im ungünstigsten Fall nur eine Log-Warnung
+
 ## [2.1.2] - 2026-11-09
 
 ### Hinzugefuegt

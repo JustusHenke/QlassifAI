@@ -1,3 +1,3 @@
 """Qlassif-AI: LLM-basiertes Analysewerkzeug fuer wissenschaftliche Textanalyse"""
 
-__version__ = "2.1.2"
+__version__ = "2.1.3"

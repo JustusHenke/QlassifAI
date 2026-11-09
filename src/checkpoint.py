@@ -1,6 +1,7 @@
 """Checkpoint-Verwaltung für Qlassif-AI - Zwischenergebnisse bei Abbruch sichern"""
 
 import json
+import time
 import hashlib
 from pathlib import Path
 from typing import Dict
@@ -167,12 +168,40 @@ class CheckpointManager:
             logger.warning(f"Checkpoint konnte nicht gelöscht werden: {e}")
 
     def save(self):
-        """Checkpoint atomar speichern (erst tmp, dann ersetzen)."""
-        data = {
+        """
+        Checkpoint atomar speichern (erst tmp, dann ersetzen).
+
+        Sync-Dienste (Dropbox, OneDrive) koennen die Zieldatei kurzzeitig
+        sperren. Darum: mehrere Versuche mit Wartezeit, dann Fallback auf
+        direktes (nicht-atomares) Schreiben. Speicherfehler koennen die
+        Analyse nie abbrechen - schlimmstenfalls fehlt der Zwischenstand.
+        """
+        data = json.dumps({
             "source_id": self.source_id,
             "config_hash": self._config_hash,
             "results": self.entries,
-        }
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-        tmp.replace(self.path)
+        }, ensure_ascii=False)
+        
+        for attempt in range(3):
+            tmp = self.path.with_suffix(".tmp")
+            try:
+                tmp.write_text(data, encoding="utf-8")
+                tmp.replace(self.path)
+                return
+            except OSError as e:
+                logger.warning(
+                    f"Checkpoint-Speichern fehlgeschlagen (Versuch {attempt + 1}/3): {e}"
+                )
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                time.sleep(0.5 * (attempt + 1))
+        
+        # Letzter Fallback: direkt schreiben (nicht atomar, aber robust gegen Sperren)
+        try:
+            self.path.write_text(data, encoding="utf-8")
+            logger.warning("Checkpoint nicht-atomar gespeichert (Fallback nach gescheitertem Ersetzen)")
+        except OSError as e:
+            # Absichtlich KEIN Raise: Analyse laeuft weiter
+            logger.error(f"Checkpoint konnte nicht gespeichert werden (Analyse laeuft weiter): {e}")
