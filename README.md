@@ -30,7 +30,31 @@ Qlassif-AI analysiert automatisch Textantworten in Excel-Dateien und PDF-Dokumen
 git clone https://github.com/JustusHenke/QlassifAi.git
 cd QlassifAi
 pip install -r requirements.txt
+python main.py
 ```
+
+### Als Befehl installieren (empfohlen)
+
+Alternativ laesst sich Qlassif-AI als Paket mit Console-Entry-Point installieren:
+
+```bash
+git clone https://github.com/JustusHenke/QlassifAi.git
+cd QlassifAi
+pip install -e .
+```
+
+Danach steht der Befehl `qlassifai` systemweit zur Verfuegung. Sie koennen das
+Terminal in jedem Projektverzeichnis oeffnen (z.B. dem Ordner mit Ihren
+Excel-Dateien und der `QlassifAI_config.json`) und dort direkt starten:
+
+```bash
+qlassifai
+```
+
+Config, Eingabedateien und Ergebnisse werden wie bisher im jeweiligen
+Arbeitsverzeichnis gesucht bzw. abgelegt. Mit `pip install -e .` (editable)
+bleiben Aenderungen am Code sofort wirksam; ein normales `pip install .`
+kopiert den Code stattdessen in die Python-Umgebung.
 
 ## Provider
 
@@ -96,7 +120,7 @@ ollama pull llama3.1:8b
 
 ### Ablage und Grundregeln
 
-Qlassif-AI sucht im beim Start ausgewählten Arbeitsverzeichnis nach einer Datei mit dem festen Namen `QlassifAI_config.json`. Legen Sie die Datei also in den Ordner mit Ihren Excel- oder PDF-Eingabedateien. Wenn keine Config gefunden wird, können Sie die Prüfmerkmale im Programm eingeben und die Konfiguration dort speichern.
+Qlassif-AI sucht im beim Start ausgewählten Arbeitsverzeichnis nach einer Datei mit dem festen Namen `QlassifAI_config.json`. Legen Sie die Datei also in den Ordner mit Ihren Excel- oder PDF-Eingabedateien. Wenn keine Config gefunden wird, können Sie die Prüfmerkmale im Programm eingeben und die Konfiguration dort speichern. Im interaktiven Dialog lässt sich zusätzlich der Name der Textspalte (`text_column_name`) festlegen; beim Laden einer Config ohne dieses Feld fragt das Programm es optional nach.
 
 Die Dateien `QlassifAI_example_config.json` und `QlassifAI_example_config_ollama.json` sind Vorlagen. Kopieren Sie eine davon in den Arbeitsordner, nennen Sie die Kopie `QlassifAI_config.json` und passen Sie die Werte an. Die API-Schlüssel gehören **nicht** in die JSON-Datei, sondern in eine `.env`-Datei oder in Umgebungsvariablen (siehe [API-Key einrichten](#api-key-einrichten)).
 
@@ -178,7 +202,7 @@ Kategorien und Fragen sollten klar und voneinander unterscheidbar formuliert sei
 | `version` | `"1.0"` | Optionaler Versionshinweis für die Config. |
 | `provider` | `"openai"` | Einer von `openrouter`, `openai`, `anthropic`, `mistral`, `ollama` oder `lmstudio`. Für Cloud-Provider den passenden API-Key separat einrichten; Ollama und LMStudio benötigen laut Anwendung keinen API-Key. |
 | `model` | `"gpt-4o-mini"` | Modellname, passend zum ausgewählten Provider. Beispiele stehen in der [Provider-Tabelle](#provider). |
-| `text_column_name` | keine | Optionaler Name der Textspalte in Excel. Ohne Angabe sucht das Programm in den ersten fünf Zeilen nach üblichen Namen wie `text`, `antwort`, `answer` oder `textantwort`. Mit Angabe wird gezielt nach diesem Spaltennamen gesucht; der angegebene Name kann auch Teil der Spaltenüberschrift sein. Für PDF-Dateien ist das Feld ohne Bedeutung. |
+| `text_column_name` | keine | Optionaler Name der Textspalte in Excel. Ohne Angabe sucht das Programm in den ersten fünf Zeilen nach üblichen Namen wie `text`, `antwort`, `answer` oder `textantwort`. Mit Angabe wird gezielt nach diesem Spaltennamen gesucht; der angegebene Name kann auch Teil der Spaltenüberschrift sein. Das Feld kann entweder hier in der Config gesetzt oder im interaktiven Dialog angegeben werden. Für PDF-Dateien ist das Feld ohne Bedeutung. |
 | `research_question` | keine | Übergeordnete Forschungsfrage, die dem Modell als Kontext für alle Prüfmerkmale mitgegeben wird. |
 | `include_reasoning` | `true` | Boolean. Bei `false` werden die Begründungen zu den Prüfmerkmalen weggelassen; die übrigen Analysefelder bleiben erhalten. |
 | `scientific` | nicht aktiviert | Optionaler Block für Konfidenz-Ausgabe und wissenschaftliche Zusatzdateien. Details siehe unten. |

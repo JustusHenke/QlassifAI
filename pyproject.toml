@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qlassifai"
+version = "2.0.2"
+description = "Qlassif-AI - LLM-basierte Textanalyse von Excel- und PDF-Daten"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "openpyxl>=3.1.5",
+    "openai>=1.51.0",
+    "python-dotenv>=1.0.1",
+    "pdfplumber>=0.11.4",
+    "anthropic>=0.39.0",
+    "mistralai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.4",
+    "hypothesis>=6.92.0",
+]
+
+[project.scripts]
+qlassifai = "main:main"
+
+[tool.setuptools]
+py-modules = ["main"]
+packages = ["src"]

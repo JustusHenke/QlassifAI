@@ -7,7 +7,10 @@ und dieses Projekt haelt sich an [Semantic Versioning](https://semver.org/lang/d
 
 ## [Unreleased]
 
-Keine Aenderungen seit dem letzten Release.
+### Hinzugefuegt
+- `pyproject.toml` mit Console-Entry-Point: Nach `pip install -e .` steht der Befehl `qlassifai` systemweit zur Verfuegung (Start aus jedem Projektverzeichnis heraus moeglich)
+- Textspaltenname (`text_column_name`) kann jetzt auch im interaktiven CLI-Dialog festgelegt werden (bisher nur via Config-Datei)
+- Beim Laden einer Config ohne `text_column_name` kann dieser nachtraeglich per CLI angegeben werden (Enter = automatische Erkennung)
 
 ## [2.0.2] - 2025-07-27
 

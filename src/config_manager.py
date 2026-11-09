@@ -172,6 +172,18 @@ class ConfigManager:
         if research_question:
             print(f"✓ Untersuchungsfrage gesetzt: {research_question}")
         
+        print("\n--- Textspalte (optional) ---")
+        print("Name der Spalte, die die zu analysierenden Textantworten enthält.")
+        print("Wird nichts angegeben, werden die Standard-Spaltennamen")
+        print("'text', 'antwort', 'answer' und 'textantwort' automatisch erkannt.")
+        text_column_input = input("Textspaltenname (Enter für automatische Erkennung): ").strip()
+        text_column_name = text_column_input if text_column_input else None
+        
+        if text_column_name:
+            print(f"✓ Textspaltenname gesetzt: {text_column_name}")
+        else:
+            print("✓ Automatische Erkennung der Textspalte aktiv")
+        
         check_attributes = []
         
         while True:
@@ -322,11 +334,16 @@ class ConfigManager:
         # Erstelle Config
         config = Config(
             check_attributes=check_attributes,
+            text_column_name=text_column_name,
             research_question=research_question,
             scientific=scientific
         )
         
         print("\n" + "=" * 60)
+        if text_column_name:
+            print(f"  Textspaltenname: {text_column_name}")
+        else:
+            print("  Textspaltenname: (automatische Erkennung)")
         if research_question:
             print(f"  Untersuchungsfrage: {research_question}")
         print(f"  {len(check_attributes)} Prüfmerkmal(e) definiert")
@@ -360,6 +377,17 @@ class ConfigManager:
                         print(f"✓ Untersuchungsfrage: {config.research_question}")
                     if config.scientific:
                         print(f"✓ Wissenschaftlicher Modus: aktiviert")
+                    
+                    # Optional: Textspaltenname nachträglich per CLI setzen
+                    if not config.text_column_name:
+                        print("\nIn der Config ist kein Textspaltenname hinterlegt.")
+                        print("Standard-Spaltennamen ('text', 'antwort', 'answer', 'textantwort')")
+                        print("werden automatisch erkannt.")
+                        col_input = input("Textspaltenname angeben? (Enter zum Überspringen): ").strip()
+                        if col_input:
+                            config.text_column_name = col_input
+                            print(f"✓ Textspaltenname gesetzt: {col_input}")
+                    
                     return config
                 except InvalidConfigError as e:
                     print(f"✗ Fehler beim Laden: {e}")
