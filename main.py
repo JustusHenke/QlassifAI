@@ -111,7 +111,7 @@ def _run_multi_coder_workflow(working_directory: Path, config, api_key: str,
         
         # Erstelle Intercoder-Excel
         if intercoder_results:
-            excel_writer = ExcelWriter(confidence_threshold=sc.confidence_threshold)
+            excel_writer = ExcelWriter(confidence_threshold=sc.confidence_threshold / 100.0)
             intercoder_path = output_manager.get_intercoder_path(working_directory.name)
             
             from openpyxl import Workbook
@@ -237,7 +237,7 @@ def main():
             output_file = working_directory / f"{dir_name}_analyzed_{timestamp}.xlsx"
             
             excel_writer = ExcelWriter(
-                confidence_threshold=config.scientific.confidence_threshold if has_science else 0.7
+                confidence_threshold=(config.scientific.confidence_threshold / 100.0 if has_science else 0.7)
             )
             excel_writer.create_pdf_results_workbook(
                 merged_results=merged_results,
@@ -446,7 +446,7 @@ def main():
             output_file = output_manager.get_analyzed_path()
 
             excel_writer = ExcelWriter(
-                confidence_threshold=config.scientific.confidence_threshold if has_science else 0.7
+                confidence_threshold=(config.scientific.confidence_threshold / 100.0 if has_science else 0.7)
             )
             workbook = excel_writer.create_new_workbook_with_results(
                 sheet_infos=sheet_infos,
