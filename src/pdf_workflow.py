@@ -93,6 +93,15 @@ def process_pdf_mode(working_directory: str, config: Config, api_key: str) -> tu
     source_id = "pdf|" + ";".join(p.name for p in pdf_files)
     checkpoint = CheckpointManager(checkpoint_path, source_id, fingerprint)
     resume = False
+    if checkpoint.load_status == "mismatch_source":
+        print("\n  ⚠ Vorhandener Checkpoint wurde ignoriert: Die PDF-Sammlung hat sich"
+              " seit dem letzten Lauf geändert.")
+    elif checkpoint.load_status == "mismatch_config":
+        print("\n  ⚠ Vorhandener Checkpoint wurde ignoriert: Die Konfiguration"
+              " (Prüfmerkmale/Modell/Untersuchungsfrage) hat sich seit dem letzten"
+              " Lauf geändert.")
+    elif checkpoint.load_status == "corrupt":
+        print("\n  ⚠ Vorhandener Checkpoint war unlesbar und wurde ignoriert.")
     if checkpoint.has_entries():
         print(f"\n  Checkpoint gefunden: {len(checkpoint)} PDF(s) bereits bearbeitet.")
         choice = input("  Am letzten kompletten PDF fortsetzen? (j/n): ").strip().lower()

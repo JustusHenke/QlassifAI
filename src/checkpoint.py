@@ -117,6 +117,9 @@ class CheckpointManager:
         self.source_id = source_id
         self._config_hash = _config_hash(fingerprint)
         self.entries: Dict[str, dict] = {}
+        # Status der Pruefung beim Laden: "absent" | "loaded" | "mismatch_source" |
+        # "mismatch_config" | "corrupt" - fuer sichtbare Meldung auf der Konsole
+        self.load_status = "absent"
         self._load()
 
     def _load(self):
@@ -126,10 +129,16 @@ class CheckpointManager:
             data = json.loads(self.path.read_text(encoding="utf-8"))
             if data.get("source_id") == self.source_id and data.get("config_hash") == self._config_hash:
                 self.entries = data.get("results", {})
+                self.load_status = "loaded"
                 logger.info(f"Checkpoint geladen: {len(self.entries)} Einträge")
+            elif data.get("source_id") != self.source_id:
+                self.load_status = "mismatch_source"
+                logger.info("Checkpoint passt nicht zur Quelldatei (geaendert/andere Datei) und wird ignoriert")
             else:
-                logger.info("Checkpoint passt nicht zur Quelldatei/Config und wird ignoriert")
+                self.load_status = "mismatch_config"
+                logger.info("Checkpoint passt nicht zur Config (geaenderte Prüfmerkmale/Modell/Untersuchungsfrage) und wird ignoriert")
         except Exception as e:
+            self.load_status = "corrupt"
             logger.warning(f"Checkpoint unlesbar ({e}), wird ignoriert")
 
     def __len__(self) -> int:

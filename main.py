@@ -362,6 +362,15 @@ def main():
             }
             checkpoint = CheckpointManager(checkpoint_path, source_id, fingerprint)
             resume = False
+            if checkpoint.load_status == "mismatch_source":
+                print("\n  ⚠ Vorhandener Checkpoint wurde ignoriert: Die Excel-Datei wurde"
+                      " seit dem letzten Lauf geändert.")
+            elif checkpoint.load_status == "mismatch_config":
+                print("\n  ⚠ Vorhandener Checkpoint wurde ignoriert: Die Konfiguration"
+                      " (Prüfmerkmale/Modell/Untersuchungsfrage) hat sich seit dem letzten"
+                      " Lauf geändert.")
+            elif checkpoint.load_status == "corrupt":
+                print("\n  ⚠ Vorhandener Checkpoint war unlesbar und wurde ignoriert.")
             if checkpoint.has_entries():
                 print(f"\n  Checkpoint gefunden: {len(checkpoint)} Fall/Fälle"
                       f" bereits bearbeitet (bei Abbruch zwischengespeichert).")
@@ -620,6 +629,15 @@ def main():
     
     except KeyboardInterrupt:
         print("\n\n✗ Abbruch durch Benutzer")
+        try:
+            if checkpoint.has_entries():
+                print(f"\n  ℹ Zwischenstand gesichert: {len(checkpoint)} bearbeitete(r) Fall/Fälle"
+                      f" in '{checkpoint.path.name}'")
+                print("    Beim nächsten Start mit 'j' am letzten kompletten Fall fortfahren.")
+            else:
+                print("\n  ℹ Es liegen noch keine abgeschlossenen Fälle zum Sichern vor.")
+        except NameError:
+            pass  # Abbruch vor Checkpoint-Erstellung (Auswahl/Config-Phase)
         sys.exit(1)
     
     except QlassifError as e:

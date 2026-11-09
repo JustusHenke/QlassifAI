@@ -5,6 +5,13 @@ Alle wesentlichen Aenderungen an Qlassif-AI.
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 und dieses Projekt haelt sich an [Semantic Versioning](https://semver.org/lang/de/).
 
+## [2.1.2] - 2026-11-09
+
+### Hinzugefuegt
+- Sichtbarer Grund auf der Konsole, wenn ein Checkpoint verworfen wird (geaenderte Quelldatei vs. geaenderte Konfiguration vs. unlesbare Datei) statt nur INFO im Log
+- Hinweis bei Strg-C: Anzahl gesicherter Faelle und Checkpoint-Dateiname werden angezeigt (bzw. Hinweis, dass noch kein abgeschlossener Fall vorliegt)
+- README: Hinweise zum Verwerfen des Checkpoints und zum Strg-C-Verhalten ergaenzt
+
 ## [2.1.1] - 2026-11-09
 
 ### Hinzugefuegt

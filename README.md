@@ -242,9 +242,10 @@ Bei einem Abbruch (Strg+C, Crash, Verbindungsabbruch) gehen bereits analysierte 
 
 - Im **Excel-Modus** schreibt Qlassif-AI nach jedem erfolgreichen Fall eine Checkpoint-Datei `{Name_der_Excel-Datei}_checkpoint.json` ins Arbeitsverzeichnis. Im **PDF-Modus** wird nach jedem fertig verarbeiteten PDF eine `_pdf_checkpoint.json` geführt.
 - Beim nächsten Start fragt das Programm, ob **am letzten kompletten Fall fortgesetzt** werden soll. Bereits bearbeitete Fälle werden übersprungen (Konsole zeigt „übersprungen (Checkpoint)"), die Ausgabedatei enthält am Ende alle Fälle.
-- Der Checkpoint ist an die **Quelldatei** (Name + Änderungszeit) und einen **Hash der Analyse-Config** (Modell, Provider, Prüfmerkmale, Untersuchungsfrage) gebunden. Ändern Sie die Excel-Datei oder die Prüffragen, wird der alte Checkpoint ignoriert und neu begonnen.
+- Der Checkpoint ist an die **Quelldatei** (Name + Änderungszeit) und einen **Hash der Analyse-Config** (Modell, Provider, Prüfmerkmale, Untersuchungsfrage) gebunden. Ändern Sie die Excel-Datei oder die Prüffragen, wird der alte Checkpoint ignoriert und neu begonnen – mit einem deutlichen Hinweis auf der Konsole, woran es lag (geänderte Datei vs. geänderte Konfiguration).
 - Nach einem **fehlerfreien** Lauf wird der Checkpoint automatisch gelöscht. Nach einem Lauf mit Fehlerfällen bleibt er bestehen – beim Fortsetzen werden fehlgeschlagene Fälle erneut versucht, erfolgreiche übersprungen.
 - Mit `n` verwerfen Sie den Checkpoint und starten von vorn.
+- Bei **Strg+C** meldet das Programm am Ende, wie viele Fälle im Checkpoint gesichert wurden und unter welchem Dateinamen. Gesichert werden jeweils nur vollständig analysierte Fälle; ein gerade laufender Fall wird beim Fortsetzen erneut versucht.
 - Hinweise: Wird mit `sample_size` **ohne Seed** gearbeitet, ist die Stichprobe pro Lauf unterschiedlich – für sinnvolles Fortsetzen daher einen `seed` setzen. Im Multi-Coder-Modus werden nur die Primär-Kodierungen im Checkpoint gesichert; die Intercoder-Vergleiche beziehen sich beim Fortsetzen auf die neu verarbeiteten Fälle.
 
 ### Optionale wissenschaftliche Einstellungen
