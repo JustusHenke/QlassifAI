@@ -5,12 +5,17 @@ Alle wesentlichen Aenderungen an Qlassif-AI.
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 und dieses Projekt haelt sich an [Semantic Versioning](https://semver.org/lang/de/).
 
-## [Unreleased]
+## [2.1.0] - 2026-11-09
 
 ### Hinzugefuegt
 - `pyproject.toml` mit Console-Entry-Point: Nach `pip install -e .` steht der Befehl `qlassifai` systemweit zur Verfuegung (Start aus jedem Projektverzeichnis heraus moeglich)
+- Neue Config-Parameter `sample_size` (Zufallsstichprobe) und `offset` (Faelle ueberspringen), nur via Config; Reihenfolge: erst Offset, dann Stichprobe; im Excel-Modus ueber alle Sheets gemeinsam, im PDF-Modus pro Datei; reproduzierbar ueber `scientific.seed`
 - Textspaltenname (`text_column_name`) kann jetzt auch im interaktiven CLI-Dialog festgelegt werden (bisher nur via Config-Datei)
 - Beim Laden einer Config ohne `text_column_name` kann dieser nachtraeglich per CLI angegeben werden (Enter = automatische Erkennung)
+
+### Geaendert
+- JSON-Reparatur abgeschnittener LLM-Antworten vor dem Retry: Offene Strings/Klammern werden geschlossen bzw. am letzten Trenner zurueckgekappt, statt sofort einen erneuten (kostenpflichtigen) API-Aufruf zu starten
+- Konsolenausgabe zeigt nur noch WARNINGS und ERRORS; das vollstaendige INFO-Log geht in `qlassif-ai.log` (Fortschrittsanzeige bleibt lesbar)
 
 ## [2.0.2] - 2025-07-27
 

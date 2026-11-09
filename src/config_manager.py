@@ -58,6 +58,8 @@ class ConfigManager:
             text_column_name = data.get("text_column_name")
             research_question = data.get("research_question")
             include_reasoning = data.get("include_reasoning", True)
+            sample_size = data.get("sample_size")
+            offset = data.get("offset", 0)
             
             scientific = None
             scientific_data = data.get("scientific")
@@ -84,6 +86,8 @@ class ConfigManager:
                 text_column_name=text_column_name,
                 research_question=research_question,
                 include_reasoning=include_reasoning,
+                sample_size=sample_size,
+                offset=offset,
                 scientific=scientific
             )
             
@@ -118,6 +122,10 @@ class ConfigManager:
             data["research_question"] = config.research_question
         if not config.include_reasoning:
             data["include_reasoning"] = False
+        if config.sample_size is not None:
+            data["sample_size"] = config.sample_size
+        if config.offset:
+            data["offset"] = config.offset
         
         if config.scientific:
             scientific_data = {}

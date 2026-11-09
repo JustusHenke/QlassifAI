@@ -240,6 +240,99 @@ WICHTIG:
         
         return response_text.strip()
     
+    @staticmethod
+    def _close_open_json(text: str) -> str:
+        """
+        Schliesst offene Strings und Klammern am Ende eines JSON-Strings.
+        
+        Args:
+            text: Unvollstaendiger JSON-String
+            
+        Returns:
+            String mit geschlossenen Anfuehrungszeichen/Klammern
+            (kein Garant fuer gueltiges JSON)
+        """
+        if not text:
+            return text
+        
+        stack = []
+        in_string = False
+        escaped = False
+        
+        for ch in text:
+            if escaped:
+                escaped = False
+                continue
+            if ch == "\\" and in_string:
+                escaped = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if not in_string:
+                if ch in "{[":
+                    stack.append(ch)
+                elif ch in "}]":
+                    if stack:
+                        stack.pop()
+        
+        repaired = text.rstrip()
+        
+        # Haengendes Komma entfernen (z.B. '["a", ' am Ende)
+        if repaired.endswith(","):
+            repaired = repaired[:-1]
+        
+        # Offenen String schliessen
+        if in_string:
+            repaired += '"'
+        
+        # Offene Klammern in umgekehrter Reihenfolge schliessen
+        for bracket in reversed(stack):
+            repaired += "}" if bracket == "{" else "]"
+        
+        return repaired
+    
+    @staticmethod
+    def _repair_truncated_json(text: str) -> str:
+        """
+        Versucht, abgeschnittenes/unvollständiges JSON zu reparieren.
+        
+        Vorgehen:
+        1. Offene Strings und Klammern schliessen (z.B. Antwort mitten im
+           Keyword-String abgeschnitten).
+        2. Falls das noch nicht reicht (z.B. unvollstaendiges Literal wie
+           'fal' statt 'false'), am letzten Komma bzw. der letzten
+           oeffnenden Klammer zurueckkapppen und erneut schliessen.
+        
+        Args:
+            text: Unvollstaendiger JSON-String
+            
+        Returns:
+            Moeglicherweise reparierter JSON-String (kein Garant fuer gueltiges JSON)
+        """
+        if not text:
+            return text
+        
+        candidate = LLMAnalyzer._close_open_json(text)
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            pass
+        
+        # Fallback: unvollstaendiges Literal am Ende -> zum letzten Trenner
+        # zurueckkapppen (vom spaetesten zum fruehesten)
+        cut_positions = [i for i, ch in enumerate(text) if ch in ",{["]
+        for pos in reversed(cut_positions):
+            candidate = LLMAnalyzer._close_open_json(text[:pos])
+            try:
+                json.loads(candidate)
+                return candidate
+            except json.JSONDecodeError:
+                continue
+        
+        return candidate
+    
     def _parse_llm_response(self, response_text: str, check_attributes: List[CheckAttribute]) -> AnalysisResult:
         """
         Parst strukturierte LLM-Antwort.
@@ -267,8 +360,24 @@ WICHTIG:
                 logger.error(error_msg)
                 raise ValueError(error_msg)
             
-            # Versuche JSON zu parsen
-            data = json.loads(response_text)
+            # Versuche JSON zu parsen; bei Fehlern zuerst Reparatur versuchen,
+            # bevor ein kostenpflichtiger API-Retry noetig wird
+            try:
+                data = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                repaired_text = self._repair_truncated_json(response_text)
+                try:
+                    data = json.loads(repaired_text)
+                    logger.info(f"JSON erfolgreich repariert (Original-Fehler: {e})")
+                    missing = [k for k in ("paraphrase", "sentiment", "keywords", "custom_checks")
+                               if k not in data]
+                    if missing:
+                        logger.warning(f"Nach JSON-Reparatur fehlende Felder: {', '.join(missing)}")
+                except json.JSONDecodeError:
+                    error_msg = f"Ungültiges JSON vom LLM: {e}"
+                    logger.error(error_msg)
+                    logger.error(f"Rohe Antwort: {response_text[:500]}")
+                    raise ValueError(error_msg)
             
             # Extrahiere Felder
             paraphrase = data.get("paraphrase", "")

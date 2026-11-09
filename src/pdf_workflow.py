@@ -57,6 +57,20 @@ def process_pdf_mode(working_directory: str, config: Config, api_key: str) -> tu
         print(f"\n✓ {len(pdf_files)} PDF-Datei(en) gefunden")
         logger.info(f"{len(pdf_files)} PDF-Dateien gefunden")
         
+        # Offset + Zufallsstichprobe aus Config anwenden (vor der Verarbeitung,
+        # damit nicht analysierte PDFs keine API-Kosten verursachen)
+        if config.offset or config.sample_size:
+            from sampling import apply_sampling
+            seed = config.scientific.seed if config.scientific else None
+            total_before = len(pdf_files)
+            pdf_files = apply_sampling(pdf_files, config.sample_size, config.offset, seed)
+            print(f"\n  Stichproben-Modus (Config):")
+            if config.offset:
+                print(f"  ✓ Offset: erste {config.offset} PDFs übersprungen")
+            if config.sample_size:
+                print(f"  ✓ Zufallsstichprobe: {len(pdf_files)} von {total_before} PDFs"
+                      + (f" (Seed: {seed})" if seed is not None else ""))
+        
     except Exception as e:
         error_msg = f"Fehler bei PDF-Dateisuche: {e}"
         logger.error(error_msg)

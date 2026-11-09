@@ -205,9 +205,36 @@ Kategorien und Fragen sollten klar und voneinander unterscheidbar formuliert sei
 | `text_column_name` | keine | Optionaler Name der Textspalte in Excel. Ohne Angabe sucht das Programm in den ersten fünf Zeilen nach üblichen Namen wie `text`, `antwort`, `answer` oder `textantwort`. Mit Angabe wird gezielt nach diesem Spaltennamen gesucht; der angegebene Name kann auch Teil der Spaltenüberschrift sein. Das Feld kann entweder hier in der Config gesetzt oder im interaktiven Dialog angegeben werden. Für PDF-Dateien ist das Feld ohne Bedeutung. |
 | `research_question` | keine | Übergeordnete Forschungsfrage, die dem Modell als Kontext für alle Prüfmerkmale mitgegeben wird. |
 | `include_reasoning` | `true` | Boolean. Bei `false` werden die Begründungen zu den Prüfmerkmalen weggelassen; die übrigen Analysefelder bleiben erhalten. |
+| `sample_size` | keine | Optional. Anzahl an Fällen, die zufällig aus dem Datensatz ausgewertet werden (Stichprobe). Nur via Config, nicht im interaktiven Dialog. Details siehe [Stichprobe und Offset](#stichprobe-und-offset). |
+| `offset` | `0` | Optional. Anzahl an Fällen am Anfang des Datensatzes, die übersprungen werden. Nur via Config, nicht im interaktiven Dialog. Details siehe [Stichprobe und Offset](#stichprobe-und-offset). |
 | `scientific` | nicht aktiviert | Optionaler Block für Konfidenz-Ausgabe und wissenschaftliche Zusatzdateien. Details siehe unten. |
 
 Die unterstützten Provider müssen exakt so (klein geschrieben) eingetragen werden. Das Feld `provider` ist technisch optional, wird in der Praxis aber empfohlen: Ohne Angabe gilt **OpenAI**, nicht OpenRouter.
+
+### Stichprobe und Offset
+
+Für große Datensätze lassen sich in der Config nur zwei Felder setzen (nicht im interaktiven Dialog):
+
+```json
+{
+  "sample_size": 100,
+  "offset": 20,
+  "check_attributes": [ ... ]
+}
+```
+
+| Feld | Bedeutung |
+|------|-----------|
+| `offset` | Überspringt die ersten `offset` Fälle des Datensatzes. Nützlich, um nach einem abgebrochenen Lauf bereits bearbeitete Fälle nicht erneut zu analysieren oder definierte Abschnitte auszuschließen. |
+| `sample_size` | Zieht aus den verbleibenden Fällen eine **Zufallsstichprobe** dieser Größe und wertet nur diese aus. Nützlich für Pilotstudien oder Kostenschätzung vor einer Vollerhebung. |
+
+Regeln:
+
+- Die Reihenfolge ist immer **erst Offset, dann Stichprobe**: `offset` wird zuerst angewendet, die Stichprobe wird aus dem Rest gezogen.
+- Im Excel-Modus zählen alle Zeilen aller kompatiblen Sheets als ein gemeinsamer Fallbestand; im PDF-Modus zählt jede PDF-Datei als ein Fall.
+- Ist `sample_size` größer als die verbleibende Fallzahl, werden einfach alle verbleibenden Fälle ausgewertet.
+- Für **reproduzierbare Stichproben** zusätzlich einen Seed setzen (siehe [Optionale wissenschaftliche Einstellungen](#optionale-wissenschaftliche-einstellungen)). Ohne Seed ist die Ziehung jedes Mal neu.
+- Beide Felder wirken vor der Analyse und sparen damit API-Kosten für nicht ausgewählte Fälle.
 
 ### Optionale wissenschaftliche Einstellungen
 

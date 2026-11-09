@@ -4,13 +4,16 @@ import logging
 from pathlib import Path
 
 
-def setup_logging(log_file: str = "qlassif-ai.log", level: int = logging.INFO) -> logging.Logger:
+def setup_logging(log_file: str = "qlassif-ai.log", level: int = logging.INFO,
+                  console_level: int = logging.WARNING) -> logging.Logger:
     """
     Richtet Logging für die Anwendung ein.
     
     Args:
         log_file: Pfad zur Log-Datei
-        level: Logging-Level (default: INFO)
+        level: Logging-Level fuer die Log-Datei (default: INFO)
+        console_level: Logging-Level fuer die Konsole (default: WARNING),
+            damit Fortschrittsanzeigen nicht durch INFO-Logs ueberlagert werden
         
     Returns:
         Konfigurierter Logger
@@ -27,14 +30,16 @@ def setup_logging(log_file: str = "qlassif-ai.log", level: int = logging.INFO) -
         '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
     )
     
-    # Console Handler
+    # Console Handler - nur Warnungen und Fehler
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
+    console_handler.setLevel(console_level)
     logger.addHandler(console_handler)
     
-    # File Handler
+    # File Handler - vollstaendiges Log
     file_handler = logging.FileHandler(log_file, encoding='utf-8')
     file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
     
     return logger

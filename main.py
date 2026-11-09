@@ -326,7 +326,24 @@ def main():
             print("\n5. Lade Excel-Datei...")
             excel_loader = ExcelLoader(custom_text_column=config.text_column_name)
             sheet_infos = excel_loader.load_and_analyze(excel_file)
-        
+
+            # 5a. Offset + Zufallsstichprobe aus Config anwenden (alle Sheets gemeinsam)
+            if config.offset or config.sample_size:
+                from sampling import apply_sampling
+                seed = config.scientific.seed if config.scientific else None
+                all_pairs = [(si, r) for si in sheet_infos for r in si.data_rows]
+                total_before = len(all_pairs)
+                selected = apply_sampling(all_pairs, config.sample_size, config.offset, seed)
+                for si in sheet_infos:
+                    si.data_rows = sorted(r for s2, r in selected if s2 is si)
+                sheet_infos = [si for si in sheet_infos if si.data_rows]
+                print(f"\n  Stichproben-Modus (Config):")
+                if config.offset:
+                    print(f"  ✓ Offset: erste {config.offset} Fälle übersprungen")
+                if config.sample_size:
+                    print(f"  ✓ Zufallsstichprobe: {len(selected)} von {total_before} Fällen"
+                          + (f" (Seed: {seed})" if seed is not None else ""))
+
             total_rows = sum(len(sheet_info.data_rows) for sheet_info in sheet_infos)
             print("\n" + "=" * 60)
             print("Excel-Datei erfolgreich geladen")

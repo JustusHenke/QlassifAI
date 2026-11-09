@@ -90,11 +90,17 @@ class Config:
     text_column_name: Optional[str] = None
     research_question: Optional[str] = None
     include_reasoning: bool = True
+    sample_size: Optional[int] = None  # Zufallsstichprobe: Anzahl zufaellig ausgewaehlter Faelle
+    offset: int = 0  # Anzahl am Anfang uebersprungener Faelle
     scientific: Optional[ScientificConfig] = None
     
     def __post_init__(self):
         if not self.check_attributes:
             raise ValueError("check_attributes darf nicht leer sein")
+        if self.sample_size is not None and self.sample_size < 1:
+            raise ValueError(f"sample_size muss mindestens 1 sein, nicht {self.sample_size}")
+        if self.offset < 0:
+            raise ValueError(f"offset darf nicht negativ sein, nicht {self.offset}")
         valid_providers = ["openai", "openrouter", "ollama", "lmstudio", "anthropic", "mistral"]
         if self.provider not in valid_providers:
             raise ValueError(
