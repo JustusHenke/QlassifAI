@@ -15,6 +15,7 @@ from text_chunker import TextChunker
 from llm_analyzer import LLMAnalyzer
 from result_merger import ResultMerger
 from file_discovery import FileDiscovery
+from checkpoint import CheckpointManager, merged_to_dict, merged_from_dict
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +78,43 @@ def process_pdf_mode(working_directory: str, config: Config, api_key: str) -> tu
         print(f"\n❌ {error_msg}")
         return [], stats
     
+    # Checkpoint: Zwischenergebnisse laden (Wiederaufnahme nach Abbruch)
+    checkpoint_path = Path(working_directory) / "_pdf_checkpoint.json"
+    fingerprint = {
+        "model": config.model,
+        "provider": config.provider,
+        "research_question": config.research_question,
+        "check_attributes": [
+            {"question": a.question, "answer_type": a.answer_type,
+             "categories": a.categories, "definition": a.definition}
+            for a in config.check_attributes
+        ],
+    }
+    source_id = "pdf|" + ";".join(p.name for p in pdf_files)
+    checkpoint = CheckpointManager(checkpoint_path, source_id, fingerprint)
+    resume = False
+    if checkpoint.has_entries():
+        print(f"\n  Checkpoint gefunden: {len(checkpoint)} PDF(s) bereits bearbeitet.")
+        choice = input("  Am letzten kompletten PDF fortsetzen? (j/n): ").strip().lower()
+        resume = choice in ["j", "ja", "y", "yes"]
+        if not resume:
+            checkpoint.clear()
+            print("  Checkpoint verworfen, Start von vorn")
+    
     # Verarbeite jede PDF-Datei
     merged_results = []
     
     for pdf_idx, pdf_path in enumerate(pdf_files, start=1):
+        # Wiederaufnahme: bereits bearbeitete PDF aus Checkpoint laden
+        if resume and checkpoint.get(pdf_path.name) is not None:
+            merged_result = merged_from_dict(checkpoint.get(pdf_path.name))
+            merged_results.append(merged_result)
+            stats.total_pdfs += 1
+            stats.add_pdf_success(chunk_count=merged_result.chunk_count,
+                                  prompt_tokens=0, completion_tokens=0)
+            print(f"\n[{pdf_idx}/{len(pdf_files)}] {pdf_path.name}: übersprungen (Checkpoint)")
+            continue
+        
         print(f"\n{'='*60}")
         print(f"Verarbeite PDF {pdf_idx}/{len(pdf_files)}: {pdf_path.name}")
         print(f"{'='*60}")
@@ -144,6 +178,8 @@ def process_pdf_mode(working_directory: str, config: Config, api_key: str) -> tu
             else:
                 print(f"  ✓ Ergebnisse zusammengeführt")
                 merged_results.append(merged_result)
+                checkpoint.add(pdf_path.name, merged_to_dict(merged_result))
+                checkpoint.save()
                 stats.add_pdf_success(
                     chunk_count=len(chunks),
                     prompt_tokens=chunk_prompt_tokens,
@@ -177,6 +213,10 @@ def process_pdf_mode(working_directory: str, config: Config, api_key: str) -> tu
     print("PDF-Verarbeitung abgeschlossen")
     print(f"{'='*60}")
     print(stats.summary())
+    
+    # Checkpoint aufräumen: Bei vollständigem Lauf löschen, sonst behalten
+    if stats.failed_pdfs == 0 and merged_results:
+        checkpoint.clear()
     
     logger.info(f"PDF-Verarbeitung abgeschlossen: {stats.successful_pdfs}/{stats.total_pdfs} erfolgreich")
     

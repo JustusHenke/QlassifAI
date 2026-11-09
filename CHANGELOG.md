@@ -5,6 +5,12 @@ Alle wesentlichen Aenderungen an Qlassif-AI.
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 und dieses Projekt haelt sich an [Semantic Versioning](https://semver.org/lang/de/).
 
+## [2.1.1] - 2026-11-09
+
+### Hinzugefuegt
+- Checkpoint-Verwaltung (`src/checkpoint.py`): Zwischenergebnisse werden nach jedem erfolgreichen Fall gesichert ({Excel-Name}_checkpoint.json bzw. _pdf_checkpoint.json); nach Abbruch kann am letzten kompletten Fall fortgesetzt werden; Checkpoint ist an Quelldatei + Config-Hash gebunden, wird nach fehlerfreiem Lauf geloescht
+- README-Abschnitt „Zwischenergebnisse und Wiederaufnahme nach Abbruch"
+
 ## [2.1.0] - 2026-11-09
 
 ### Hinzugefuegt

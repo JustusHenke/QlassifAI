@@ -7,6 +7,7 @@ from datetime import datetime
 # Füge src zum Python-Pfad hinzu
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+from checkpoint import CheckpointManager, result_to_dict, result_from_dict
 from environment_manager import EnvironmentManager
 from file_discovery import FileDiscovery
 from excel_loader import ExcelLoader
@@ -345,6 +346,30 @@ def main():
                           + (f" (Seed: {seed})" if seed is not None else ""))
 
             total_rows = sum(len(sheet_info.data_rows) for sheet_info in sheet_infos)
+
+            # 5b. Checkpoint: Zwischenergebnisse laden (Wiederaufnahme nach Abbruch)
+            checkpoint_path = working_directory / f"{excel_file.stem}_checkpoint.json"
+            source_id = f"{excel_file.name}|{int(excel_file.stat().st_mtime)}"
+            fingerprint = {
+                "model": config.model,
+                "provider": config.provider,
+                "research_question": config.research_question,
+                "check_attributes": [
+                    {"question": a.question, "answer_type": a.answer_type,
+                     "categories": a.categories, "definition": a.definition}
+                    for a in config.check_attributes
+                ],
+            }
+            checkpoint = CheckpointManager(checkpoint_path, source_id, fingerprint)
+            resume = False
+            if checkpoint.has_entries():
+                print(f"\n  Checkpoint gefunden: {len(checkpoint)} Fall/Fälle"
+                      f" bereits bearbeitet (bei Abbruch zwischengespeichert).")
+                choice = input("  Am letzten kompletten Fall fortsetzen? (j/n): ").strip().lower()
+                resume = choice in ["j", "ja", "y", "yes"]
+                if not resume:
+                    checkpoint.clear()
+                    print("  ✓ Checkpoint verworfen, Start von vorn")
             print("\n" + "=" * 60)
             print("Excel-Datei erfolgreich geladen")
             print("=" * 60)
@@ -401,6 +426,14 @@ def main():
 
                     print(f"  Zeile {idx}/{len(sheet_info.data_rows)}: ", end="", flush=True)
 
+                    # Wiederaufnahme: bereits bearbeitete Zeile aus Checkpoint
+                    checkpoint_key = f"{sheet_info.name}#{row_idx}"
+                    if resume and checkpoint.get(checkpoint_key) is not None:
+                        result = result_from_dict(checkpoint.get(checkpoint_key))
+                        sheet_results.append(result)
+                        print("übersprungen (Checkpoint)")
+                        continue
+
                     if has_multi_coder:
                         try:
                             ic_result = multi_coder_inst.encode_text(
@@ -414,6 +447,8 @@ def main():
                             sheet_results.append(result)
                             print(f"OK ({len(ic_result.coder_results)} Kodierer)")
                             stats.add_success(result.prompt_tokens, result.completion_tokens)
+                            checkpoint.add(checkpoint_key, result_to_dict(result))
+                            checkpoint.save()
                         except Exception as e:
                             print(f"Fehler: {e}")
                             stats.add_failure(f"Zeile {row_idx}: {e}")
@@ -431,6 +466,8 @@ def main():
                         else:
                             print("OK")
                             stats.add_success(result.prompt_tokens, result.completion_tokens)
+                            checkpoint.add(checkpoint_key, result_to_dict(result))
+                            checkpoint.save()
 
                         sheet_results.append(result)
 
@@ -484,6 +521,11 @@ def main():
             # Einmal alles speichern
             workbook.save(output_file)
             print(f"  Ergebnisse: {output_file}")
+
+            # Checkpoint aufräumen: Bei vollständigem Lauf löschen,
+            # sonst behalten (fehlgeschlagene Zeilen werden beim Resume erneut versucht)
+            if stats.failed == 0:
+                checkpoint.clear()
 
             # Reproduzierbarkeit (optional)
             if has_science:

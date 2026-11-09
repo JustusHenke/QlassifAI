@@ -236,6 +236,17 @@ Regeln:
 - Für **reproduzierbare Stichproben** zusätzlich einen Seed setzen (siehe [Optionale wissenschaftliche Einstellungen](#optionale-wissenschaftliche-einstellungen)). Ohne Seed ist die Ziehung jedes Mal neu.
 - Beide Felder wirken vor der Analyse und sparen damit API-Kosten für nicht ausgewählte Fälle.
 
+### Zwischenergebnisse und Wiederaufnahme nach Abbruch
+
+Bei einem Abbruch (Strg+C, Crash, Verbindungsabbruch) gehen bereits analysierte Fälle nicht verloren:
+
+- Im **Excel-Modus** schreibt Qlassif-AI nach jedem erfolgreichen Fall eine Checkpoint-Datei `{Name_der_Excel-Datei}_checkpoint.json` ins Arbeitsverzeichnis. Im **PDF-Modus** wird nach jedem fertig verarbeiteten PDF eine `_pdf_checkpoint.json` geführt.
+- Beim nächsten Start fragt das Programm, ob **am letzten kompletten Fall fortgesetzt** werden soll. Bereits bearbeitete Fälle werden übersprungen (Konsole zeigt „übersprungen (Checkpoint)"), die Ausgabedatei enthält am Ende alle Fälle.
+- Der Checkpoint ist an die **Quelldatei** (Name + Änderungszeit) und einen **Hash der Analyse-Config** (Modell, Provider, Prüfmerkmale, Untersuchungsfrage) gebunden. Ändern Sie die Excel-Datei oder die Prüffragen, wird der alte Checkpoint ignoriert und neu begonnen.
+- Nach einem **fehlerfreien** Lauf wird der Checkpoint automatisch gelöscht. Nach einem Lauf mit Fehlerfällen bleibt er bestehen – beim Fortsetzen werden fehlgeschlagene Fälle erneut versucht, erfolgreiche übersprungen.
+- Mit `n` verwerfen Sie den Checkpoint und starten von vorn.
+- Hinweise: Wird mit `sample_size` **ohne Seed** gearbeitet, ist die Stichprobe pro Lauf unterschiedlich – für sinnvolles Fortsetzen daher einen `seed` setzen. Im Multi-Coder-Modus werden nur die Primär-Kodierungen im Checkpoint gesichert; die Intercoder-Vergleiche beziehen sich beim Fortsetzen auf die neu verarbeiteten Fälle.
+
 ### Optionale wissenschaftliche Einstellungen
 
 Wenn Sie keine wissenschaftlichen Zusatzdateien oder Konfidenzspalten benötigen, lassen Sie `scientific` ganz weg. Sobald ein nicht-leerer `scientific`-Block gesetzt ist, wird der wissenschaftliche Modus aktiviert; `multi_coder` steuert darin separat den Vergleich mehrerer Modelle.
