@@ -5,6 +5,11 @@ Alle wesentlichen Aenderungen an Qlassif-AI.
 Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 und dieses Projekt haelt sich an [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unreleased]
+
+### Behoben
+- Keyword-Kategorisierung: Crash bei `None`-Antworten des LLM (`'NoneType' object has no attribute 'strip'`) behoben; jetzt None-Check, Retry-Schleife (3 Versuche), JSON-Cleaning vor dem Parsen und Validierung, dass ein JSON-Objekt zurückkommt, bevor der Fallback „Allgemein" greift
+
 ## [2.1.3] - 2026-11-09
 
 ### Behoben

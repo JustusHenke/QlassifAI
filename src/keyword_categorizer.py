@@ -1,6 +1,7 @@
 """Keyword Categorizer für thematische Gruppierung"""
 
 import json
+import time
 from typing import List, Dict, Set
 from models import AnalysisResult, CategoryMapping
 from llm_analyzer import LLMAnalyzer
@@ -93,33 +94,55 @@ WICHTIG:
 - Verwende die EXAKTEN Keywords aus der Liste als Keys
 - Jedes Keyword muss genau einmal vorkommen"""
         
-        try:
-            logger.info("Generiere Kategorien mit LLM...")
-            
-            response = self.llm_analyzer.client.chat.completions.create(
-                model=self.llm_analyzer.model,
-                messages=[
-                    {"role": "system", "content": "Du bist ein Experte für thematische Kategorisierung. Antworte immer im JSON-Format."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                max_tokens=3000
-            )
-            
-            response_text = response.choices[0].message.content.strip()
-            keyword_to_category = json.loads(response_text)
-            
-            # Zähle Kategorien
-            categories = set(keyword_to_category.values())
-            logger.info(f"{len(categories)} Kategorien generiert")
-            logger.info(f"{len(keyword_to_category)} von {len(keywords)} Keywords zugeordnet")
-            
-            return keyword_to_category
-            
-        except Exception as e:
-            logger.error(f"Fehler bei Kategorie-Generierung: {e}")
-            # Fallback: Ordne alle Keywords zu "Allgemein" zu
-            return {kw: "Allgemein" for kw in keywords}
+        max_retries = 3
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Generiere Kategorien mit LLM (Versuch {attempt + 1}/{max_retries})...")
+                
+                response = self.llm_analyzer.client.chat.completions.create(
+                    model=self.llm_analyzer.model,
+                    messages=[
+                        {"role": "system", "content": "Du bist ein Experte für thematische Kategorisierung. Antworte immer im JSON-Format."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    max_tokens=3000
+                )
+                
+                response_text = response.choices[0].message.content
+                
+                # LLM kann None liefern (Provider-Problem, Content-Filter etc.)
+                if response_text is None:
+                    logger.warning(f"LLM hat None zurückgegeben (Versuch {attempt + 1}/{max_retries})")
+                    time.sleep(1)
+                    continue
+                
+                # Markdown-Fences und Text um das JSON entfernen, dann parsen
+                cleaned = self.llm_analyzer._clean_json_response(response_text.strip())
+                keyword_to_category = json.loads(cleaned)
+                
+                if not isinstance(keyword_to_category, dict):
+                    raise ValueError(
+                        f"Erwartet JSON-Objekt, erhalten: {type(keyword_to_category).__name__}"
+                    )
+                
+                # Zähle Kategorien
+                categories = set(keyword_to_category.values())
+                logger.info(f"{len(categories)} Kategorien generiert")
+                logger.info(f"{len(keyword_to_category)} von {len(keywords)} Keywords zugeordnet")
+                
+                return keyword_to_category
+                
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Fehler bei Kategorie-Generierung (Versuch {attempt + 1}/{max_retries}): {e}")
+                time.sleep(1)
+        
+        logger.error(f"Fehler bei Kategorie-Generierung nach {max_retries} Versuchen: {last_error}")
+        # Fallback: Ordne alle Keywords zu "Allgemein" zu
+        return {kw: "Allgemein" for kw in keywords}
     
     def assign_categories(self, result: AnalysisResult, 
                          keyword_to_category: Dict[str, str]) -> List[str]:
